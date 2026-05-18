@@ -34,7 +34,7 @@ pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
             Some(p)
         }
         Err(e) => {
-            println!("\n{}Connection failed:{} \n  -{}\n{}Exiting...{}",colors::RED,colors::RESET,e,colors::GRAY,colors::RESET);
+            println!("\n{}Connection failed:{} \n  -{}\n",colors::RED,colors::RESET,e);
             None
         }
     }

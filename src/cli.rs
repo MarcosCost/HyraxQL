@@ -17,10 +17,10 @@ pub enum Commands {
     Connect(ConnectArgs),
 }
 
-#[derive(Parser, Debug)]
-enum TuiCommands {
-    Explore,
-    Status,
+#[derive(Parser)]
+pub enum TuiCommands {
+    Connect(ConnectArgs),
+    Clear,
     Exit,
 }
 
