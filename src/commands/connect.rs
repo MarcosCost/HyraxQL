@@ -1,7 +1,8 @@
 use std::time::Duration;
+use sqlx::{AnyPool, any::{AnyConnectOptions, AnyPoolOptions}};
 
 use crate::cli::ConnectArgs;
-use sqlx::{AnyPool, any::{AnyConnectOptions, AnyPoolOptions}};
+use crate::colors;
 
 // Connect and return the Connection Pool
 pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
@@ -14,12 +15,12 @@ pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
     let options = match args.url.parse::<AnyConnectOptions>() {
         Ok(opts) => opts,
         Err(e) => {
-            println!("Invalid connection string format: {}", e);
+            println!("{}Invalid connection string format{}: {}",colors::RED,colors::RESET, e);
             return None;
         }
     };
 
-    println!("Attempting connection with a 3-second timeout...");
+    println!("{}Attempting connection with a 3-second timeout...{}", colors::GRAY, colors::RESET);
 
     // Build the pool using explicit settings
     let pool_result = AnyPoolOptions::new()
@@ -30,11 +31,10 @@ pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
 
     match pool_result {
         Ok(p) => {
-            println!("Connected! Launching TUI...");
             Some(p)
         }
         Err(e) => {
-            println!("\nConnection failed: \n  -{}\n Exiting...", e);
+            println!("\n{}Connection failed:{} \n  -{}\n{}Exiting...{}",colors::RED,colors::RESET,e,colors::GRAY,colors::RESET);
             None
         }
     }

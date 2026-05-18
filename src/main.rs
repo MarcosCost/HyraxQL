@@ -1,5 +1,6 @@
 mod cli;        // Make rust aware of cli.rs
 mod commands;   // Rust automatically searchs for commands/mod.rs
+mod colors;
 
 use clap::Parser;
 use sqlx::AnyPool;
@@ -7,6 +8,7 @@ use std::io::{self, Write};
 
 use crate::cli::Cli;
 use crate::cli::Commands;
+use crate::colors::GRAY;
 use crate::commands::run_connect;
 
 #[tokio::main] // Allow main to be async
@@ -23,7 +25,7 @@ async fn main() {
 
     // Connect from Shell
     if let Some(Commands::Connect(args)) = cli.command {
-        println!("Shell input detected. Connecting to {}...", args.url);
+        println!("{}Shell input detected. \nConnecting to {}...{}",colors::GRAY, args.url, colors::RESET);
         pool = run_connect(&args).await;
         if pool.is_none() {
             return;
@@ -31,9 +33,9 @@ async fn main() {
     }
 
     // Fall into the TUI Loop
-    println!("--- Interactive DB Explorer ---");
+    println!("{}--- Interactive DB Explorer ---{}",colors::GREEN,colors::RESET);
     loop {
-        print!("hyraxQL> ");
+        print!("{}hyraxQL> {}",colors::DIM,colors::RESET);
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
