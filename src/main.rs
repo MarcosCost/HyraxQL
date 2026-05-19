@@ -2,9 +2,13 @@ mod cli;        // Make rust aware of cli.rs
 mod commands;   // Rust automatically searchs for commands/mod.rs
 mod colors;
 
-use clap::Parser;
-use rustyline::DefaultEditor;
+use clap::{CommandFactory, Parser};
+use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::{Context, Editor, Helper};
 use sqlx::AnyPool;
 
 use crate::cli::Cli;
@@ -12,6 +16,49 @@ use crate::cli::Commands;
 use crate::cli::TuiCommands;
 use crate::commands::explore::*;
 use crate::commands::*;
+
+// Autocomplete for TUI functions
+struct CommandCompleter;
+impl Completer for CommandCompleter {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &Context<'_>,
+    ) -> Result<(usize, Vec<Pair>), ReadlineError> {
+        if pos < line.len() {
+            return Ok((0, Vec::new()));
+        }
+
+        let cmd = TuiCommands::command();
+        let mut candidates = Vec::new();
+
+        let all_commands: Vec<String> = cmd.get_subcommands()
+            .map(|c| c.get_name().to_string())
+            .chain(std::iter::once("help".to_string()))
+            .collect();
+
+        for subcommand in all_commands {
+            let name = subcommand;
+            if name.starts_with(line) {
+                candidates.push(Pair {
+                    display: name.to_string(),
+                    replacement: name.to_string(),
+                });
+            }
+        }
+
+        Ok((0, candidates))
+    }
+}
+impl Hinter for CommandCompleter {
+    type Hint = String;
+}
+impl Highlighter for CommandCompleter {}
+impl Validator for CommandCompleter {}
+impl Helper for CommandCompleter {}
 
 #[tokio::main] // Allow main to be async
 async fn main() {
@@ -36,7 +83,9 @@ async fn main() {
         }
     }
 
-    let mut rl = DefaultEditor::new().expect("Failed to initialize TUI input system");
+    let mut rl = Editor::<CommandCompleter, rustyline::history::DefaultHistory>::new()
+        .expect("Failed to initialize TUI input system");
+    rl.set_helper(Some(CommandCompleter));
 
     // Fall into the TUI Loop
     println!("{}--- Interactive DB Explorer ---{}",colors::GREEN,colors::RESET);
