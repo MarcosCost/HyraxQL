@@ -52,35 +52,21 @@ async fn main() {
                 // Add successfully typed commands to the up/down arrow history!
                 let _ = rl.add_history_entry(input);
 
-                // Create a vector of args that Clap can understand as a shell input
-                let mut tui_args = vec!["hyraxql"];
-                match shell_words::split(input) {
-                    Ok(parsed_args) => {
-                        tui_args.extend(parsed_args.iter().map(|s| s.as_str()));
-
-                        // Clap parser
-                        match TuiCommands::try_parse_from(tui_args) {
-                            Ok(command) => match command {
-                                TuiCommands::Clear => {
-                                    print!("\x1b[2J\x1b[1;1H");
-                                    std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                                }
-                                TuiCommands::Exit => {
-                                    println!("{}Goodbye!{}", colors::GRAY, colors::RESET);
-                                    break;
-                                }
-                                TuiCommands::Connect(args) => {
-                                    run_connect(&args).await;
-                                }
-                            },
-                            Err(err) => println!("{}", err),
+                match parse_tui_command(input) {
+                    Ok(command) => match command {
+                        TuiCommands::Clear => {
+                            print!("\x1b[2J\x1b[1;1H");
+                            std::io::Write::flush(&mut std::io::stdout()).unwrap();
                         }
-
-                    }
-                    Err(_) => {
-                        println!("{}{}Error:{} Invalid quoting or unclosed string context.", colors::BOLD, colors::RED, colors::RESET);
-                        continue;
-                    }
+                        TuiCommands::Exit => {
+                            println!("{}Goodbye!{}", colors::GRAY, colors::RESET);
+                            break;
+                        }
+                        TuiCommands::Connect(args) => {
+                            run_connect(&args).await;
+                        }
+                    },
+                    Err(err) => println!("{}", err),
                 }
             },
             // Handle Ctrl+C or Ctrl+D cleanly
@@ -97,5 +83,82 @@ async fn main() {
                 break;
             }
         }
+    }
+}
+
+/// Parses a TUI input string into a TuiCommands enum.
+fn parse_tui_command(input: &str) -> Result<TuiCommands, String> {
+    match shell_words::split(input) {
+        Ok(parsed_args) => {
+            let mut tui_args = vec!["hyraxql"];
+            tui_args.extend(parsed_args.iter().map(|s| s.as_str()));
+
+            TuiCommands::try_parse_from(tui_args)
+                .map_err(|err| err.to_string())
+        }
+        Err(_) => Err(format!(
+            "{}{}Error:{} Invalid quoting or unclosed string context.",
+            colors::BOLD, colors::RED, colors::RESET
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_tui_command_valid_exit() {
+        let result = parse_tui_command("exit");
+        assert!(matches!(result, Ok(TuiCommands::Exit)));
+    }
+
+    #[test]
+    fn test_parse_tui_command_valid_clear() {
+        let result = parse_tui_command("clear");
+        assert!(matches!(result, Ok(TuiCommands::Clear)));
+    }
+
+    #[test]
+    fn test_parse_tui_command_valid_connect() {
+        let result = parse_tui_command("connect --url postgres://localhost");
+        if let Ok(TuiCommands::Connect(args)) = result {
+            assert_eq!(args.url, "postgres://localhost");
+        } else {
+            panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn test_parse_tui_command_quoted_url() {
+        let result = parse_tui_command("connect -U \"sqlite:my db.sqlite\"");
+        if let Ok(TuiCommands::Connect(args)) = result {
+            assert_eq!(args.url, "sqlite:my db.sqlite");
+        } else {
+            panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn test_parse_tui_command_extra_spaces() {
+        let result = parse_tui_command("   connect    -U    postgres://localhost   ");
+        if let Ok(TuiCommands::Connect(args)) = result {
+            assert_eq!(args.url, "postgres://localhost");
+        } else {
+            panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn test_parse_tui_command_invalid_command() {
+        let result = parse_tui_command("invalid-cmd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_tui_command_unclosed_quote() {
+        let result = parse_tui_command("connect -U \"unclosed quote");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid quoting"));
     }
 }

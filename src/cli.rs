@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(name = "hyraxql", version = "0.1.0", about = "A fast and lightweight DB explorer")]
 pub struct Cli {
     // Flags for subcommandless
@@ -12,19 +12,19 @@ pub struct Cli {
     pub command: Option<Commands>,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     Connect(ConnectArgs),
 }
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub enum TuiCommands {
     Connect(ConnectArgs),
     Clear,
     Exit,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct ConnectArgs {
     #[arg(short = 'U', long)]
     pub url: String,

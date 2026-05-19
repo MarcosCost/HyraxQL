@@ -3,10 +3,10 @@
     src="https://thumbs.dreamstime.com/b/adorable-rock-hyrax-portrait-happy-animal-closeup-charming-image-features-close-up-showcasing-its-endearing-expression-380168733.jpg"
     width="160" height="120" style="border-radius: 8px;" alt="Rock Hyrax" />
   <h1>HyraxQL</h1>
-  <p><strong>A lightning-fast, lightweight database explorer, built in rust for the modern terminal.</strong></p>
+  <p><strong>“Awawa!”<br>- with Fur, Bullshit</br>A lightning-fast, lightweight database explorer, built in rust for the modern terminal.</strong></p>
 
   <p>
-    <img src="https://img.shields.io/badge/Rust-2024-orange?logo=rust" alt="Rust Edition" />
+    <img src="https://img.shields.io/badge/Rust-2026-orange?logo=rust" alt="Rust Edition" />
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
   </p>
@@ -24,6 +24,14 @@ Named after the Hyrax—a small, tough, and surprisingly agile animal—this too
 - **Performance**: Zero-cost abstractions and Rust's safety ensure your explorer never lags.
 - **Simplicity**: No need for complex configuration files. Just point to a connection string and go.
 - **Universal Interface**: One set of commands, regardless of whether you're on Postgres, MySQL, or SQLite.
+
+---
+
+## 🔌 Compatible With
+
+- 🐘 **PostgreSQL** (including CockroachDB, TimescaleDB, and any other database that speaks the PostgreSQL wire protocol)
+- 🐬 **MySQL & MariaDB** (including any database that speaks the MySQL wire protocol)
+- 🪶 **SQLite** (file-based or local in-memory)
 
 ---
 
@@ -67,7 +75,7 @@ cargo make test
 
 - [x] Basic PostgreSQL/MySQL/SQLite support.
 - [x] Interactive TUI loop.
-- [ ] Query execution and result formatting.
+- [ ] Native query execution and result formatting.
 - [ ] Table schema visualization.
 - [ ] Connection bookmarks/profiles.
 - [ ] NoSQL and column-oriented databases adapters.
