@@ -10,6 +10,7 @@ use sqlx::AnyPool;
 use crate::cli::Cli;
 use crate::cli::Commands;
 use crate::cli::TuiCommands;
+use crate::commands::explore::*;
 use crate::commands::*;
 
 #[tokio::main] // Allow main to be async
@@ -63,7 +64,19 @@ async fn main() {
                             break;
                         }
                         TuiCommands::Connect(args) => {
-                            run_connect(&args).await;
+                            pool = run_connect(&args).await;
+                        }
+                        TuiCommands::Disconnect => {
+                            pool = None;
+                            println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
+                        }
+                        TuiCommands::Explore => {
+                            if let Some(ref_pool) = pool.as_ref() {
+                                // TODO: Proper visual display
+                                println!("{:#?}", tables(ref_pool).await);
+                            } else {
+                                println!("{}Error{}: Database is not connected.",colors::RED,colors::RESET); 
+                            }
                         }
                     },
                     Err(err) => println!("{}", err),

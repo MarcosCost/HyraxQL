@@ -25,6 +25,7 @@ pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
 
     match pool_result {
         Ok(p) => {
+            println!("{}Connection Sucessfull!!{}", colors::GRAY, colors::RESET);
             Some(p)
         }
         Err(e) => {
