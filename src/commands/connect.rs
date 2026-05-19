@@ -6,7 +6,7 @@ use crate::colors;
 
 // Connect and return the Connection Pool
 pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
-    let options = match validate_url(&args.url) {
+    let options = match validate_url(&args.build_url()) {
         Ok(opts) => opts,
         Err(err_msg) => {
             println!("{}", err_msg);
@@ -34,7 +34,7 @@ pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
     }
 }
 
-/// Validates the connection URL and returns AnyConnectOptions if valid.
+// Validates the connection URL and returns AnyConnectOptions if valid.
 fn validate_url(url: &str) -> Result<AnyConnectOptions, String> {
     if url.is_empty() {
         return Err("U must provide a non empty connection URL".to_string());

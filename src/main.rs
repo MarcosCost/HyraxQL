@@ -27,7 +27,7 @@ async fn main() {
 
     // Connect from Shell
     if let Some(Commands::Connect(args)) = cli.command {
-        println!("{}Shell input detected. \nConnecting to {}...{}",colors::GRAY, args.url, colors::RESET);
+        println!("{}Shell input detected. \nConnecting to {}...{}",colors::GRAY, args.build_url(), colors::RESET);
         pool = run_connect(&args).await;
         if pool.is_none() {
             println!("{}Exiting...{}",colors::GRAY,colors::RESET);
@@ -121,9 +121,9 @@ mod tests {
 
     #[test]
     fn test_parse_tui_command_valid_connect() {
-        let result = parse_tui_command("connect --url postgres://localhost");
+        let result = parse_tui_command("connect -t postgres -u marcos -d hyrax_dev -h localhost");
         if let Ok(TuiCommands::Connect(args)) = result {
-            assert_eq!(args.url, "postgres://localhost");
+            assert_eq!(args.build_url(), "postgres://marcos@localhost:5432/hyrax_dev");
         } else {
             panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
         }
@@ -131,9 +131,9 @@ mod tests {
 
     #[test]
     fn test_parse_tui_command_quoted_url() {
-        let result = parse_tui_command("connect -U \"sqlite:my db.sqlite\"");
+        let result = parse_tui_command("connect -t sqlite -d \"my db.sqlite\"");
         if let Ok(TuiCommands::Connect(args)) = result {
-            assert_eq!(args.url, "sqlite:my db.sqlite");
+            assert_eq!(args.build_url(), "sqlite://my db.sqlite");
         } else {
             panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
         }
@@ -141,9 +141,9 @@ mod tests {
 
     #[test]
     fn test_parse_tui_command_extra_spaces() {
-        let result = parse_tui_command("   connect    -U    postgres://localhost   ");
+        let result = parse_tui_command("connect      -t       postgres       -u      marcos -d       hyrax_dev      -h       localhost");
         if let Ok(TuiCommands::Connect(args)) = result {
-            assert_eq!(args.url, "postgres://localhost");
+            assert_eq!(args.build_url(), "postgres://marcos@localhost:5432/hyrax_dev");
         } else {
             panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
         }

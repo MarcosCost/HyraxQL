@@ -13,7 +13,7 @@
   <div style="display: flex; gap: 15px; margin-top: 15px;">
     <div style="flex: 1; background-color: #313244; padding: 15px; border-radius: 6px;">
       <h3 style="margin-top: 0; font-size: 1rem; color: #89b4fa;">Direct CLI</h3>
-      <code>hyraxql connect --url &lt;URL&gt;</code>
+      <code>hyraxql connect -t postgres -u user -d db_name</code>
       <p style="font-size: 0.85rem; margin-bottom: 0;">Connect and start exploring immediately.</p>
     </div>
     <div style="flex: 1; background-color: #313244; padding: 15px; border-radius: 6px;">
@@ -56,10 +56,13 @@
   <summary style="cursor: pointer; font-weight: bold; color: #89b4fa;">🔗 connect</summary>
   <div style="padding-top: 10px; color: #cdd6f4;">
     <p>Establishes a connection to a database instance.</p>
-    <strong>Usage:</strong> <code>connect --url || -U &lt;CONNECTION_STRING&gt;</code><br />
-    <strong>Example:</strong> <code>connect -U "postgres://user@localhost/db"</code>
+    <strong>Usage:</strong> <code>connect -t &lt;TYPE&gt; -u &lt;USER&gt; -d &lt;DB NAME&gt; -w &lt;PASSWORD&gt; -h &lt;HOST&gt; -p &lt;PORTS&gt;</code><br />
+    <strong>Example:</strong> <code>connect -t "postgres" -u "marcos" -d "hyraxData"</code>
     <div style="margin-top: 10px; padding: 8px; background-color: #313244; border-left: 3px solid #89b4fa; border-radius: 4px;">
-      💡 Tip: Use -U for faster connection typing in the shell.
+      💡 Note: Only the Type and Database name flags are obrigatory (All other flags, except password, default to something), however User and Ports are likelly not going to match your specific needs unless specified.
+    </div>
+    <div style="margin-top: 10px; padding: 8px; background-color: #313244; border-left: 3px solid #89b4fa; border-radius: 4px;">
+      💡 Note: Sqlite connections only take Type and Database name, all other flags will be ignored
     </div>
   </div>
 </details>
