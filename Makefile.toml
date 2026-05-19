@@ -1,0 +1,29 @@
+[config]
+skip_core_tasks = true
+
+[tasks.db-start]
+description = "Spin up an ephemeral PostgreSQL container for testing"
+script_runner = "@shell"
+script = [
+    "docker rm -f hyraxql-test-db 2>/dev/null || true",
+    "docker run --name hyraxql-test-db -e POSTGRES_PASSWORD=secret -p 5433:5432 -d postgres:latest",
+    "sleep 3"
+]
+
+[tasks.db-stop]
+description = "Stop and completely remove the test container"
+script_runner = "@shell"
+script = [
+    "docker stop hyraxql-test-db 2>/dev/null || true",
+    "docker rm -f hyraxql-test-db 2>/dev/null || true"
+]
+
+[tasks.test]
+description = "Run the full test suite and force cleanup immediately after"
+dependencies = ["db-start"]
+script_runner = "@shell"
+script = [
+    "DATABASE_URL=postgres://postgres:secret@localhost:5433/postgres cargo test -- --test-threads=1 || TEST_RESULT=$?",
+    "docker stop hyraxql-test-db && docker rm hyraxql-test-db",
+    "exit ${TEST_RESULT:-0}"
+]

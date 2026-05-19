@@ -58,7 +58,7 @@ cargo run -- connect --url "sqlite::memory:"
 
 ### Running Tests
 ```bash
-cargo test
+cargo make test
 ```
 
 ---
