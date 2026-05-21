@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
+comfy-table = "7.2.2"
 rustyline = "18.0.0"
 shell-words = "1.1.1"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-native-tls", "postgres", "mysql", "sqlite", "any"] }
+terminal_size = "0.4.4"
 tokio = { version = "1.52.3", features = ["full"] }

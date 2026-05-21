@@ -116,16 +116,10 @@ async fn main() {
                             pool = run_connect(&args).await;
                         }
                         TuiCommands::Disconnect => {
-                            pool = None;
-                            println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
+                            pool = None; println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
                         }
-                        TuiCommands::Explore => {
-                            if let Some(ref_pool) = pool.as_ref() {
-                                // TODO: Proper visual display
-                                println!("{:#?}", tables(ref_pool).await);
-                            } else {
-                                println!("{}Error{}: Database is not connected.",colors::RED,colors::RESET); 
-                            }
+                        TuiCommands::Explore(args) => {
+                            explore(&args, &pool).await;
                         }
                     },
                     Err(err) => println!("{}", err),

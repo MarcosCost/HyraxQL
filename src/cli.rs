@@ -20,7 +20,7 @@ pub enum Commands {
 #[derive(Parser, Debug)]
 pub enum TuiCommands {
     Connect(ConnectArgs),
-    Explore, // List all tables in the db, regardless of type, or get a specific table
+    Explore(ExploreArgs), // List all tables in the db, regardless of type, or get a specific table
     Clear,
     Disconnect,
     Exit,
@@ -70,6 +70,12 @@ impl ConnectArgs {
     }
 }
 
+#[derive(Args, Debug)]
+#[command(disable_help_flag = true)]
+pub struct ExploreArgs {
+    #[clap(short = 't', long = "table")]
+    pub table: Option<String>,
+}
 
 // ==========
 // Unit Tests
