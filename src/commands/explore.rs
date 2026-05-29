@@ -6,23 +6,21 @@ use terminal_size::{terminal_size, Width};
 use crate::cli::ExploreArgs;
 use crate::colors;
 
-pub async fn explore(args: &ExploreArgs, pool: &Option<sqlx::AnyPool>) {
-if let Some(ref_pool) = pool.as_ref() { 
-        match &args.table {
-            Some(table_name) => {
-                println!("TODO: table Specific: {}", table_name);
-            }
-            None => {
-                match tables(ref_pool).await {
-                    Ok(all_tables) => {
-                        format_tables(&all_tables).await;
-                    }, 
-                    Err(e) => println!("{}Error{}: {}", colors::RED, colors::RESET, e),
-                }
-            }
-        }
-    } else {
+pub async fn explore(args: &ExploreArgs, pool: Option<&sqlx::AnyPool>) {
+    let Some(ref_pool) = pool else {
         println!("{}Error{}: Database is not connected.", colors::RED, colors::RESET);
+        return;
+    };
+
+    if let Some(table_name) = &args.table {
+        println!("TODO: table Specific: {}", table_name);
+        return;
+    }
+
+    // no args, show all tables
+    match tables(ref_pool).await {
+        Ok(all_tables) => format_tables(&all_tables),
+        Err(e) => println!("{}Error{}: {}", colors::RED, colors::RESET, e),
     }
 }
 
@@ -48,15 +46,15 @@ async fn tables(pool: &sqlx::AnyPool) -> Result<Vec<String>, sqlx::Error> {
     let rows = sqlx::query(query).fetch_all(&mut *conn).await?;
 
     let tables = rows.iter()
-        .map(|row| row.try_get::<String, _>(0).unwrap_or_default())
-        .collect();
+        .map(|row| row.try_get::<String, _>(0))
+        .collect::<Result<Vec<String>, _>>()?;
 
     Ok(tables)
 }
 
 // Helper Functions
 
-async fn format_tables(tables: &Vec<String>){
+fn format_tables(tables: &Vec<String>){
     if tables.is_empty() {
         return;
     }

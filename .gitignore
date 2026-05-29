@@ -1,1 +1,3 @@
 /target
+# To spin up databases for testing
+compose.yml 

@@ -6,12 +6,14 @@ use crate::colors;
 
 // Connect and return the Connection Pool
 pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
-    let options = match validate_url(&args.build_url()) {
-        Ok(opts) => opts,
-        Err(err_msg) => {
-            println!("{}", err_msg);
-            return None;
-        }
+    
+    let options = 
+        match validate_url(&args.build_url()) {
+            Ok(opts) => opts,
+            Err(err_msg) => {
+                println!("{}", err_msg);
+                return None;
+            }
     };
 
     println!("{}Attempting connection with a 3-second timeout...{}", colors::GRAY, colors::RESET);

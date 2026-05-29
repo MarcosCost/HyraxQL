@@ -1,5 +1,8 @@
 use clap::{Args, Parser, Subcommand};
 
+// =========================================================================
+// Cli
+// =========================================================================
 #[derive(Parser, Debug)]
 #[command(name = "hyraxql", version = "0.1.0", about = "A fast and lightweight DB explorer")]
 pub struct Cli {
@@ -11,21 +14,24 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
-
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     Connect(ConnectArgs),
 }
 
+// =========================================================================
+// Tui - Commands
+// =========================================================================
 #[derive(Parser, Debug)]
 pub enum TuiCommands {
     Connect(ConnectArgs),
-    Explore(ExploreArgs), // List all tables in the db, regardless of type, or get a specific table
+    Explore(ExploreArgs),
     Clear,
     Disconnect,
     Exit,
 }
 
+// ----------- Connect
 #[derive(Args, Debug)]
 #[command(disable_help_flag = true)]
 pub struct ConnectArgs {
@@ -70,6 +76,7 @@ impl ConnectArgs {
     }
 }
 
+// ----------- Explore
 #[derive(Args, Debug)]
 #[command(disable_help_flag = true)]
 pub struct ExploreArgs {

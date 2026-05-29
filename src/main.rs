@@ -59,12 +59,17 @@ impl Hinter for CommandCompleter {
 impl Highlighter for CommandCompleter {}
 impl Validator for CommandCompleter {}
 impl Helper for CommandCompleter {}
+ 
+
+// =========================================================================
+// Main
+// =========================================================================
 
 #[tokio::main] // Allow main to be async
 async fn main() {
 
+    // Initialization of stuff 
     let cli = Cli::parse();
-    #[allow(unused)]
     let mut pool: Option<AnyPool> = None;
 
     sqlx::any::install_default_drivers();
@@ -99,7 +104,6 @@ async fn main() {
                 let input = input.trim();
                 if input.is_empty() { continue; }
 
-                // Add successfully typed commands to the up/down arrow history!
                 let _ = rl.add_history_entry(input);
 
                 match parse_tui_command(input) {
@@ -109,6 +113,7 @@ async fn main() {
                             std::io::Write::flush(&mut std::io::stdout()).unwrap();
                         }
                         TuiCommands::Exit => {
+                            if pool.is_some() {println!("Make sure to Disconnect before exiting"); continue;}
                             println!("{}Goodbye!{}", colors::GRAY, colors::RESET);
                             break;
                         }
@@ -116,10 +121,13 @@ async fn main() {
                             pool = run_connect(&args).await;
                         }
                         TuiCommands::Disconnect => {
-                            pool = None; println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
+                            if let Some(p) = pool.take() {
+                                p.close().await;
+                            };
+                            println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
                         }
                         TuiCommands::Explore(args) => {
-                            explore(&args, &pool).await;
+                            explore(&args, pool.as_ref()).await;
                         }
                     },
                     Err(err) => println!("{}", err),
@@ -142,6 +150,10 @@ async fn main() {
     }
 }
 
+// =========================================================================
+// Helpers
+// =========================================================================
+
 /// Parses a TUI input string into a TuiCommands enum.
 fn parse_tui_command(input: &str) -> Result<TuiCommands, String> {
     match shell_words::split(input) {
@@ -158,6 +170,10 @@ fn parse_tui_command(input: &str) -> Result<TuiCommands, String> {
         )),
     }
 }
+
+// =========================================================================
+// Tests
+// =========================================================================
 
 #[cfg(test)]
 mod tests {
