@@ -4,7 +4,11 @@ use clap::{ArgGroup, Args, Parser, Subcommand};
 // Cli
 // =========================================================================
 #[derive(Parser, Debug)]
-#[command(name = "hyraxql", version = "0.1.0", about = "A fast and lightweight DB explorer")]
+#[command(
+    name = "hyraxql",
+    version = "0.1.0",
+    about = "A fast and lightweight DB explorer"
+)]
 pub struct Cli {
     // Flags for subcommandless
     #[arg(short, long, global = true)]
@@ -56,7 +60,6 @@ pub struct ConnectArgs {
 }
 impl ConnectArgs {
     pub fn build_url(&self) -> String {
-
         if self.db_type.to_lowercase() == "sqlite" {
             return format!("sqlite://{}", self.dbname);
         }
@@ -81,10 +84,16 @@ impl ConnectArgs {
 #[command(disable_help_flag = true, group = ArgGroup::new("exclusive").multiple(false))]
 pub struct ExploreArgs {
     #[clap(short = 't', long = "table", group = "exclusive")]
-    pub table: Option<String>,  // Pass as option if user may not provide AND has no default value
-    #[clap(short = 'c', long = "columns", requires = "table")] 
+    pub table: Option<String>, // Pass as option if user may not provide AND has no default value
+    #[clap(short = 'c', long = "columns", requires = "table")]
     pub columns: bool,
-    #[clap(short = 's', long = "size", requires = "table", conflicts_with = "columns", default_value = "25")] 
+    #[clap(
+        short = 's',
+        long = "size",
+        requires = "table",
+        conflicts_with = "columns",
+        default_value = "25"
+    )]
     pub size: i32,
 }
 
@@ -104,11 +113,14 @@ mod tests {
             dbname: "hyrax_prod".to_string(),
             host: "10.0.0.1".to_string(),
             port: "5432".to_string(),
-            password: Some("my_secret_pass".to_string())
+            password: Some("my_secret_pass".to_string()),
         };
         let url = args.build_url();
 
-        assert_eq!(url, "postgres://marcos:my_secret_pass@10.0.0.1:5432/hyrax_prod");
+        assert_eq!(
+            url,
+            "postgres://marcos:my_secret_pass@10.0.0.1:5432/hyrax_prod"
+        );
     }
 
     #[test]

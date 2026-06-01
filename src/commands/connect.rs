@@ -1,27 +1,32 @@
+use sqlx::{
+    AnyPool,
+    any::{AnyConnectOptions, AnyPoolOptions},
+};
 use std::time::Duration;
-use sqlx::{AnyPool, any::{AnyConnectOptions, AnyPoolOptions}};
 
 use crate::cli::ConnectArgs;
 use crate::colors;
 
 // Connect and return the Connection Pool
 pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
-    
-    let options = 
-        match validate_url(&args.build_url()) {
-            Ok(opts) => opts,
-            Err(err_msg) => {
-                println!("{}", err_msg);
-                return None;
-            }
+    let options = match validate_url(&args.build_url()) {
+        Ok(opts) => opts,
+        Err(err_msg) => {
+            println!("{}", err_msg);
+            return None;
+        }
     };
 
-    println!("{}Attempting connection with a 3-second timeout...{}", colors::GRAY, colors::RESET);
+    println!(
+        "{}Attempting connection with a 3-second timeout...{}",
+        colors::GRAY,
+        colors::RESET
+    );
 
     // Build the pool using explicit settings
     let pool_result = AnyPoolOptions::new()
         .max_connections(5)
-        .acquire_timeout(Duration::from_secs(5)) 
+        .acquire_timeout(Duration::from_secs(5))
         .connect_with(options)
         .await;
 
@@ -31,7 +36,12 @@ pub async fn run(args: &ConnectArgs) -> Option<AnyPool> {
             Some(p)
         }
         Err(e) => {
-            println!("\n{}Connection failed:{} \n  -{}\n",colors::RED,colors::RESET,e);
+            println!(
+                "\n{}Connection failed:{} \n  -{}\n",
+                colors::RED,
+                colors::RESET,
+                e
+            );
             None
         }
     }
@@ -46,7 +56,9 @@ fn validate_url(url: &str) -> Result<AnyConnectOptions, String> {
     url.parse::<AnyConnectOptions>().map_err(|e| {
         format!(
             "{}Invalid connection string format{}: {}",
-            colors::RED, colors::RESET, e
+            colors::RED,
+            colors::RESET,
+            e
         )
     })
 }
@@ -59,7 +71,10 @@ mod tests {
     fn test_validate_url_empty() {
         let result = validate_url("");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "U must provide a non empty connection URL");
+        assert_eq!(
+            result.unwrap_err(),
+            "U must provide a non empty connection URL"
+        );
     }
 
     #[test]
@@ -72,6 +87,10 @@ mod tests {
     fn test_validate_url_invalid_format() {
         let result = validate_url("not-a-url");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid connection string format"));
+        assert!(
+            result
+                .unwrap_err()
+                .contains("Invalid connection string format")
+        );
     }
 }

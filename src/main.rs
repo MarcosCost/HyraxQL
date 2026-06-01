@@ -1,6 +1,6 @@
-mod cli;        // Make rust aware of cli.rs
-mod commands;   // Rust automatically searchs for commands/mod.rs
+mod cli; // Make rust aware of cli.rs
 mod colors;
+mod commands; // Rust automatically searchs for commands/mod.rs
 
 use clap::{CommandFactory, Parser};
 use rustyline::completion::{Completer, Pair};
@@ -35,7 +35,8 @@ impl Completer for CommandCompleter {
         let cmd = TuiCommands::command();
         let mut candidates = Vec::new();
 
-        let all_commands: Vec<String> = cmd.get_subcommands()
+        let all_commands: Vec<String> = cmd
+            .get_subcommands()
             .map(|c| c.get_name().to_string())
             .chain(std::iter::once("help".to_string()))
             .collect();
@@ -59,7 +60,6 @@ impl Hinter for CommandCompleter {
 impl Highlighter for CommandCompleter {}
 impl Validator for CommandCompleter {}
 impl Helper for CommandCompleter {}
- 
 
 // =========================================================================
 // Main
@@ -67,23 +67,28 @@ impl Helper for CommandCompleter {}
 
 #[tokio::main] // Allow main to be async
 async fn main() {
-
-    // Initialization of stuff 
+    // Initialization of stuff
     let cli = Cli::parse();
     let mut pool: Option<AnyPool> = None;
 
     sqlx::any::install_default_drivers();
 
-    if cli.verbose {    // Does nothing lol
+    if cli.verbose {
+        // Does nothing lol
         println!("[DEBUG]: Verbose mode on")
     }
 
     // Connect from Shell
     if let Some(Commands::Connect(args)) = cli.command {
-        println!("{}Shell input detected. \nConnecting to {}...{}",colors::GRAY, args.build_url(), colors::RESET);
+        println!(
+            "{}Shell input detected. \nConnecting to {}...{}",
+            colors::GRAY,
+            args.build_url(),
+            colors::RESET
+        );
         pool = run_connect(&args).await;
         if pool.is_none() {
-            println!("{}Exiting...{}",colors::GRAY,colors::RESET);
+            println!("{}Exiting...{}", colors::GRAY, colors::RESET);
             return;
         }
     }
@@ -93,16 +98,22 @@ async fn main() {
     rl.set_helper(Some(CommandCompleter));
 
     // Fall into the TUI Loop
-    println!("{}--- Interactive DB Explorer ---{}",colors::GREEN,colors::RESET);
+    println!(
+        "{}--- Interactive DB Explorer ---{}",
+        colors::GREEN,
+        colors::RESET
+    );
     loop {
         // Read line with a built-in prompt string
         let prompt_string = format!("{}{}{} ", colors::CYAN, "hyraxql>", colors::RESET);
         let readline = rl.readline(&prompt_string);
-        
+
         match readline {
             Ok(input) => {
                 let input = input.trim();
-                if input.is_empty() { continue; }
+                if input.is_empty() {
+                    continue;
+                }
 
                 let _ = rl.add_history_entry(input);
 
@@ -113,7 +124,10 @@ async fn main() {
                             std::io::Write::flush(&mut std::io::stdout()).unwrap();
                         }
                         TuiCommands::Exit => {
-                            if pool.is_some() {println!("Make sure to Disconnect before exiting"); continue;}
+                            if pool.is_some() {
+                                println!("Make sure to Disconnect before exiting");
+                                continue;
+                            }
                             println!("{}Goodbye!{}", colors::GRAY, colors::RESET);
                             break;
                         }
@@ -127,15 +141,19 @@ async fn main() {
                             println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
                         }
                         TuiCommands::Explore(args) => {
-                            let _ = explore(&args, pool.as_ref()).await; 
+                            let _ = explore(&args, pool.as_ref()).await;
                         }
                     },
                     Err(err) => println!("{}", err),
                 }
-            },
+            }
             // Handle Ctrl+C or Ctrl+D cleanly
             Err(ReadlineError::Interrupted) => {
-                println!("{}Interrupted (Ctrl+C). Exiting...{}", colors::RED, colors::RESET);
+                println!(
+                    "{}Interrupted (Ctrl+C). Exiting...{}",
+                    colors::RED,
+                    colors::RESET
+                );
                 break;
             }
             Err(ReadlineError::Eof) => {
@@ -161,12 +179,13 @@ fn parse_tui_command(input: &str) -> Result<TuiCommands, String> {
             let mut tui_args = vec!["hyraxql"];
             tui_args.extend(parsed_args.iter().map(|s| s.as_str()));
 
-            TuiCommands::try_parse_from(tui_args)
-                .map_err(|err| err.to_string())
+            TuiCommands::try_parse_from(tui_args).map_err(|err| err.to_string())
         }
         Err(_) => Err(format!(
             "{}{}Error:{} Invalid quoting or unclosed string context.",
-            colors::BOLD, colors::RED, colors::RESET
+            colors::BOLD,
+            colors::RED,
+            colors::RESET
         )),
     }
 }
@@ -195,7 +214,10 @@ mod tests {
     fn test_parse_tui_command_valid_connect() {
         let result = parse_tui_command("connect -t postgres -u marcos -d hyrax_dev -h localhost");
         if let Ok(TuiCommands::Connect(args)) = result {
-            assert_eq!(args.build_url(), "postgres://marcos@localhost:5432/hyrax_dev");
+            assert_eq!(
+                args.build_url(),
+                "postgres://marcos@localhost:5432/hyrax_dev"
+            );
         } else {
             panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
         }
@@ -213,9 +235,14 @@ mod tests {
 
     #[test]
     fn test_parse_tui_command_extra_spaces() {
-        let result = parse_tui_command("connect      -t       postgres       -u      marcos -d       hyrax_dev      -h       localhost");
+        let result = parse_tui_command(
+            "connect      -t       postgres       -u      marcos -d       hyrax_dev      -h       localhost",
+        );
         if let Ok(TuiCommands::Connect(args)) = result {
-            assert_eq!(args.build_url(), "postgres://marcos@localhost:5432/hyrax_dev");
+            assert_eq!(
+                args.build_url(),
+                "postgres://marcos@localhost:5432/hyrax_dev"
+            );
         } else {
             panic!("Expected Ok(TuiCommands::Connect), got {:?}", result);
         }
