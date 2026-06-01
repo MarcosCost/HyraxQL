@@ -7,6 +7,7 @@ edition = "2024"
 clap = { version = "4.6.1", features = ["derive"] }
 comfy-table = "7.2.2"
 rustyline = "18.0.0"
+serde_json = "1.0.150"
 shell-words = "1.1.1"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-native-tls", "postgres", "mysql", "sqlite", "any"] }
 terminal_size = "0.4.4"

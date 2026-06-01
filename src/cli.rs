@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand};
 
 // =========================================================================
 // Cli
@@ -78,10 +78,14 @@ impl ConnectArgs {
 
 // ----------- Explore
 #[derive(Args, Debug)]
-#[command(disable_help_flag = true)]
+#[command(disable_help_flag = true, group = ArgGroup::new("exclusive").multiple(false))]
 pub struct ExploreArgs {
-    #[clap(short = 't', long = "table")]
-    pub table: Option<String>,
+    #[clap(short = 't', long = "table", group = "exclusive")]
+    pub table: Option<String>,  // Pass as option if user may not provide AND has no default value
+    #[clap(short = 'c', long = "columns", requires = "table")] 
+    pub columns: bool,
+    #[clap(short = 's', long = "size", requires = "table", conflicts_with = "columns", default_value = "25")] 
+    pub size: i32,
 }
 
 // ==========

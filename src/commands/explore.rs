@@ -1,29 +1,108 @@
-use sqlx::Row;
+use sqlx::{any::AnyRow, Column, Row};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
 use terminal_size::{terminal_size, Width};
+use serde_json::{json, Value};
 
 use crate::cli::ExploreArgs;
 use crate::colors;
 
-pub async fn explore(args: &ExploreArgs, pool: Option<&sqlx::AnyPool>) {
+pub async fn explore(args: &ExploreArgs, pool: Option<&sqlx::AnyPool>) -> Result<(), sqlx::Error> {
     let Some(ref_pool) = pool else {
         println!("{}Error{}: Database is not connected.", colors::RED, colors::RESET);
-        return;
+        return Ok(());
     };
 
+    // -t
     if let Some(table_name) = &args.table {
-        println!("TODO: table Specific: {}", table_name);
-        return;
+        let mut conn = ref_pool.acquire().await?;
+        let db_type = conn.backend_name();
+        
+        // -t -c
+        if args.columns {
+            let query = match db_type {
+                "PostgreSQL" => {
+                    "SELECT column_name::text, data_type::text FROM information_schema.columns WHERE table_name = $1 AND table_schema = 'public'"
+                }
+                "MySQL" => {
+                    "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ? AND table_schema = DATABASE()"
+                }
+                "SQLite" => {
+                    "PRAGMA table_info(?)"
+                }
+                _ => return Err(sqlx::Error::Configuration(
+                    format!("Unsupported database driver: {}", db_type).into()
+                )),
+            };
+
+            let rows = sqlx::query(query)
+                .bind(table_name)
+                .fetch_all(&mut *conn)
+                .await?;
+
+            let columns = rows.iter()
+                .map(|row| {
+                    let name = row.try_get::<String, _>(0)?;
+                    let col_type = row.try_get::<String, _>(1)?;
+                    Ok(format!("{} ({})", name, col_type))
+                })
+                .collect::<Result<Vec<String>, sqlx::Error>>()?;
+
+            format_tables(&columns);
+            return Ok(());
+        }
+
+        let query_size = args.size;
+
+        let query = match db_type {
+            "PostgreSQL" => {
+                format!("SELECT * FROM {} LIMIT $1;",table_name).to_string()
+            }
+            "MySQL" => {
+                format!("SELECT * FROM {} LIMIT ?",table_name).to_string()
+            }
+            "SQLite" => {
+                format!("SELECT * FROM {} LIMIT ?;", table_name).to_string()
+            }
+            _ => return Err(sqlx::Error::Configuration(
+                format!("Unsupported database driver: {}", db_type).into()
+            ))
+        };
+
+        let rows = sqlx::query(&query)
+            .bind(query_size)
+            .fetch_all(&mut *conn)
+            .await?;
+
+        let columns: Vec<Vec<(String, Value)>> = rows
+            .iter()
+            .map(|row: &AnyRow| {
+                row.columns()
+                    .iter()
+                    .map(|col| (col.name().to_string(), value_to_json(row, col.ordinal())))
+                    .collect()
+            })
+            .collect();
+
+        format_query_results(&columns);
+        return Ok(());
     }
 
     // no args, show all tables
     match tables(ref_pool).await {
-        Ok(all_tables) => format_tables(&all_tables),
-        Err(e) => println!("{}Error{}: {}", colors::RED, colors::RESET, e),
+        Ok(all_tables) => {
+            println!("{}Tables:{}", colors::BOLD, colors::RESET);
+            Ok(format_tables(&all_tables))
+        },
+        Err(e) => {
+            println!("{}Error{}: {}", colors::RED, colors::RESET, e);
+            Err(e)
+        }    
     }
+    
 }
 
+// Get all table Names
 async fn tables(pool: &sqlx::AnyPool) -> Result<Vec<String>, sqlx::Error> {
     let mut conn = pool.acquire().await?;
     let db_type = conn.backend_name();
@@ -53,7 +132,6 @@ async fn tables(pool: &sqlx::AnyPool) -> Result<Vec<String>, sqlx::Error> {
 }
 
 // Helper Functions
-
 fn format_tables(tables: &Vec<String>){
     if tables.is_empty() {
         return;
@@ -90,4 +168,51 @@ fn format_tables(tables: &Vec<String>){
     }
 
     println!("{table}");
+}
+
+fn format_query_results(rows: &Vec<Vec<(String, Value)>>) {
+    if rows.is_empty() {
+        println!("No results.");
+        return;
+    }
+
+    let mut table = Table::new();
+    table.load_preset(UTF8_FULL);
+
+    // Header row from first row's keys
+    let headers: Vec<Cell> = rows[0]
+        .iter()
+        .map(|(k, _)| Cell::new(k).fg(Color::Green).add_attribute(Attribute::Bold))
+        .collect();
+    table.set_header(headers);
+
+    // Data rows
+    for row in rows {
+        let cells: Vec<Cell> = row
+            .iter()
+            .map(|(_, v)| {
+                let s = match v {
+                    Value::String(s) => s.clone(),
+                    Value::Null => "NULL".to_string(),
+                    other => other.to_string(),
+                };
+                Cell::new(s).fg(Color::Cyan)
+            })
+            .collect();
+        table.add_row(cells);
+    }
+
+    println!("{table}");
+}
+
+fn value_to_json(row: &sqlx::any::AnyRow, ordinal: usize) -> serde_json::Value {
+    use sqlx::Row;
+    
+    if let Ok(v) = row.try_get::<bool, _>(ordinal)   { return json!(v); }
+    if let Ok(v) = row.try_get::<i64, _>(ordinal)    { return json!(v); }
+    if let Ok(v) = row.try_get::<f64, _>(ordinal)    { return json!(v); }
+    if let Ok(v) = row.try_get::<String, _>(ordinal) { return json!(v); }
+    if let Ok(v) = row.try_get::<Vec<u8>, _>(ordinal) { return json!(v); }
+    
+    json!(null)
 }
