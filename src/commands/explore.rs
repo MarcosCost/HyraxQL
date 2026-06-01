@@ -21,15 +21,9 @@ pub async fn explore(args: &ExploreArgs, pool: Option<&sqlx::AnyPool>) -> Result
         // -t -c
         if args.columns {
             let query = match db_type {
-                "PostgreSQL" => {
-                    "SELECT column_name::text, data_type::text FROM information_schema.columns WHERE table_name = $1 AND table_schema = 'public'"
-                }
-                "MySQL" => {
-                    "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ? AND table_schema = DATABASE()"
-                }
-                "SQLite" => {
-                    "PRAGMA table_info(?)"
-                }
+                "PostgreSQL" => "SELECT column_name::text, data_type::text FROM information_schema.columns WHERE table_name = $1 AND table_schema = 'public'",
+                "MySQL" => "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ? AND table_schema = DATABASE()",
+                "SQLite" => "PRAGMA table_info(?)",
                 _ => return Err(sqlx::Error::Configuration(
                     format!("Unsupported database driver: {}", db_type).into()
                 )),
@@ -40,37 +34,32 @@ pub async fn explore(args: &ExploreArgs, pool: Option<&sqlx::AnyPool>) -> Result
                 .fetch_all(&mut *conn)
                 .await?;
 
-            let columns = rows.iter()
-                .map(|row| {
-                    let name = row.try_get::<String, _>(0)?;
-                    let col_type = row.try_get::<String, _>(1)?;
-                    Ok(format!("{} ({})", name, col_type))
+            let columns: Vec<Vec<(String, Value)>> = rows
+                .iter()
+                .map(|row: &AnyRow| {
+                    row.columns()
+                        .iter()
+                        .map(|col| (col.name().to_string(), value_to_json(row, col.ordinal())))
+                        .collect()
                 })
-                .collect::<Result<Vec<String>, sqlx::Error>>()?;
+                .collect();
 
-            format_tables(&columns);
+            format_query_results(&columns);
             return Ok(());
         }
 
-        let query_size = args.size;
-
+        // -t
         let query = match db_type {
-            "PostgreSQL" => {
-                format!("SELECT * FROM {} LIMIT $1;",table_name).to_string()
-            }
-            "MySQL" => {
-                format!("SELECT * FROM {} LIMIT ?",table_name).to_string()
-            }
-            "SQLite" => {
-                format!("SELECT * FROM {} LIMIT ?;", table_name).to_string()
-            }
+            "PostgreSQL" => format!("SELECT * FROM {} LIMIT $1;", table_name),
+            "MySQL" => format!("SELECT * FROM {} LIMIT ?", table_name),
+            "SQLite" => format!("SELECT * FROM {} LIMIT ?;", table_name),
             _ => return Err(sqlx::Error::Configuration(
                 format!("Unsupported database driver: {}", db_type).into()
-            ))
+            )),
         };
 
         let rows = sqlx::query(&query)
-            .bind(query_size)
+            .bind(args.size)
             .fetch_all(&mut *conn)
             .await?;
 
@@ -97,9 +86,9 @@ pub async fn explore(args: &ExploreArgs, pool: Option<&sqlx::AnyPool>) -> Result
         Err(e) => {
             println!("{}Error{}: {}", colors::RED, colors::RESET, e);
             Err(e)
-        }    
+        }
     }
-    
+
 }
 
 // Get all table Names
@@ -108,15 +97,9 @@ async fn tables(pool: &sqlx::AnyPool) -> Result<Vec<String>, sqlx::Error> {
     let db_type = conn.backend_name();
     
     let query = match db_type {
-        "PostgreSQL" => {
-            "SELECT table_name::text FROM information_schema.tables WHERE table_schema = 'public'"
-        }
-        "MySQL" => {
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()"
-        }
-        "SQLite" => {
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        }
+        "PostgreSQL" => "SELECT table_name::text FROM information_schema.tables WHERE table_schema = 'public'",
+        "MySQL" => "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()",
+        "SQLite" => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
         _ => return Err(sqlx::Error::Configuration(
             format!("Unsupported database driver: {}", db_type).into()
         )),
@@ -124,15 +107,13 @@ async fn tables(pool: &sqlx::AnyPool) -> Result<Vec<String>, sqlx::Error> {
     
     let rows = sqlx::query(query).fetch_all(&mut *conn).await?;
 
-    let tables = rows.iter()
+    rows.iter()
         .map(|row| row.try_get::<String, _>(0))
-        .collect::<Result<Vec<String>, _>>()?;
-
-    Ok(tables)
+        .collect::<Result<Vec<String>, _>>()
 }
 
 // Helper Functions
-fn format_tables(tables: &Vec<String>){
+fn format_tables(tables: &Vec<String>) {
     if tables.is_empty() {
         return;
     }
@@ -144,7 +125,7 @@ fn format_tables(tables: &Vec<String>){
     };
 
     let max_name_len = tables.iter().map(|s| s.len()).max().unwrap_or(0);
-    let cell_width = max_name_len + 3; 
+    let cell_width = max_name_len + 3;
 
     let calculated_columns = (term_width / cell_width).max(1);
     let desired_columns = calculated_columns.min(tables.len());
@@ -153,11 +134,10 @@ fn format_tables(tables: &Vec<String>){
     table.load_preset(UTF8_FULL);
 
     for chunk in tables.chunks(desired_columns) {
-        let mut row_cells = Vec::new();
-        for name in chunk {
-            row_cells.push(Cell::new(name).fg(Color::Cyan));
-        }
-        
+        let mut row_cells: Vec<Cell> = chunk.iter()
+            .map(|name| Cell::new(name).fg(Color::Cyan))
+            .collect();
+
         if tables.len() > desired_columns {
             while row_cells.len() < desired_columns {
                 row_cells.push(Cell::new(""));
@@ -205,14 +185,11 @@ fn format_query_results(rows: &Vec<Vec<(String, Value)>>) {
     println!("{table}");
 }
 
-fn value_to_json(row: &sqlx::any::AnyRow, ordinal: usize) -> serde_json::Value {
-    use sqlx::Row;
-    
-    if let Ok(v) = row.try_get::<bool, _>(ordinal)   { return json!(v); }
-    if let Ok(v) = row.try_get::<i64, _>(ordinal)    { return json!(v); }
-    if let Ok(v) = row.try_get::<f64, _>(ordinal)    { return json!(v); }
-    if let Ok(v) = row.try_get::<String, _>(ordinal) { return json!(v); }
+fn value_to_json(row: &AnyRow, ordinal: usize) -> Value {
+    if let Ok(v) = row.try_get::<bool, _>(ordinal)    { return json!(v); }
+    if let Ok(v) = row.try_get::<i64, _>(ordinal)     { return json!(v); }
+    if let Ok(v) = row.try_get::<f64, _>(ordinal)     { return json!(v); }
+    if let Ok(v) = row.try_get::<String, _>(ordinal)  { return json!(v); }
     if let Ok(v) = row.try_get::<Vec<u8>, _>(ordinal) { return json!(v); }
-    
     json!(null)
 }

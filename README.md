@@ -76,7 +76,7 @@ cargo make test
 - [x] Basic PostgreSQL/MySQL/SQLite support.
 - [x] Interactive TUI loop.
 - [ ] Native query execution and result formatting.
-- [ ] Table schema visualization.
+- [x] Table schema visualization.
 - [ ] Connection bookmarks/profiles.
 - [ ] NoSQL and column-oriented databases adapters.
 - [ ] Non-cli application.

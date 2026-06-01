@@ -127,7 +127,7 @@ async fn main() {
                             println!("{}Disconnected!{}", colors::GRAY, colors::RESET);
                         }
                         TuiCommands::Explore(args) => {
-                            explore(&args, pool.as_ref()).await;
+                            let _ = explore(&args, pool.as_ref()).await; 
                         }
                     },
                     Err(err) => println!("{}", err),
