@@ -1,5 +1,5 @@
 use std::sync::mpsc::Sender;
-use crate::{db::database::DbProvider};
+use crate::db::database::{DbPool};
 
 pub enum ManagerData {
     Rows(Vec<Vec<String>>),
@@ -12,7 +12,7 @@ pub enum ManagerData {
 }
 
 pub struct AppState {
-    pub db_conn: Option<Box<dyn DbProvider>>,
+    pub db_pool: Option<Box<dyn DbPool>>,
     pub current_data: ManagerData,
     pub select_table: Option<String>,           // The currently selected table to Allow Omission in the UI's
 
@@ -25,12 +25,14 @@ impl AppState {
             current_data: ManagerData::Idle,
             event_tx,
             select_table: None,
-            db_conn: None
+            db_pool: None
         }
     }
 
     pub fn set(&mut self ,new_data: ManagerData){
         self.current_data = new_data;
-        assert_eq!(self.event_tx.send(1).unwrap_err().0, 1, "There was an Error sending the refresh message");
+        if let Err(e) = self.event_tx.send(1) {
+            eprintln!("Failed to send refresh message: {}", e);
+        }
     }
 }
