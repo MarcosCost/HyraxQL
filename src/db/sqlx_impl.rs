@@ -2,9 +2,8 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 use sqlx::pool::PoolConnection;
-use sqlx::{Any, AnyPool, Column, Row};
+use sqlx::{Any, AnyPool};
 use crate::db::database::{DbPool, DbProvider};
-use crate::app_state::ManagerData;
 use crate::misc::app_enums::AppError;
 
 

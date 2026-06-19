@@ -1,44 +1,65 @@
 /* Getting tables, Getting table headers, Listing x entries*/
-use crate::{app_state::{AppState, ManagerData}, misc::app_enums::AppError};
+use crate::{app_state::{AppState, ManagerData}};
 use sqlx::Row;
 
-pub async fn get_relation_names(state: &mut AppState) -> Result<(),AppError> {
-    let conn = state.db_pool.as_ref().unwrap().acquire().await?;
-    let dtype = conn.driver_type().await?;
-
-    let query = match dtype.to_lowercase().as_str() {
-        "postgresql" => {
-            // Cast table_name explicitly to TEXT
-            sqlx::query::<sqlx::Any>(
-                "SELECT table_name::text FROM information_schema.tables WHERE table_schema = 'public'"
-            )
+pub async fn get_relation_names(state: &mut AppState) {
+    // Safely get the pool
+    let pool_borrow = match state.db_pool.as_ref() {
+        Some(pool) => pool,
+        None => {
+            state.set(ManagerData::CommandError("No DB pool found".to_string()));
+            return;
         }
-        "mysql" | "mariadb" => {
-            // MySQL handles text implicitly, but you can use CAST if needed
-            sqlx::query::<sqlx::Any>(
-                "SELECT CAST(table_name AS CHAR) FROM information_schema.tables WHERE table_schema = DATABASE()"
-            )
-        }
-        "sqlite" => {
-            // SQLite uses dynamic typing, standard text works perfectly
-            sqlx::query::<sqlx::Any>(
-                "SELECT CAST(name AS TEXT) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            )
-        }
-        _ => {return Err(AppError::DatabaseError(format!("Database type not recognize: {}",dtype.as_str()).to_owned()));}
     };
 
+    // Safely acquire connection
+    let conn = match pool_borrow.acquire().await {
+        Ok(c) => c,
+        Err(e) => {
+            state.set(ManagerData::CommandError(format!("Failed to acquire connection: {:#?}", e)));
+            return;
+        }
+    };
+
+    let dtype = match conn.driver_type().await {
+        Ok(t) => t,
+        Err(e) => {
+            state.set(ManagerData::CommandError(format!("Failed to get driver type: {:?}", e)));
+            return;
+        }
+    };
+
+    // Determine the query string
+    let sql_query = match dtype.to_lowercase().as_str() {
+        "postgresql" => {
+            "SELECT table_name::text FROM information_schema.tables WHERE table_schema = 'public'"
+        }
+        "mysql" | "mariadb" => {
+            "SELECT CAST(table_name AS CHAR) FROM information_schema.tables WHERE table_schema = DATABASE()"
+        }
+        "sqlite" => {
+            "SELECT CAST(name AS TEXT) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        }
+        _ => {
+            state.set(ManagerData::CommandError(format!("Database type not recognized: {}", dtype.as_str())));
+            return;
+        }
+    };
+
+    let query = sqlx::query::<sqlx::Any>(sql_query);
     let mut conn_lock = conn.as_any_connection().lock().unwrap();
-    let rows = query.fetch_all(&mut **conn_lock)
-        .await
-        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
     
-    let table_names: Vec<String> = rows
-        .iter()
-        .map(|row| row.get::<String, _>(0))
-        .collect();
+    match query.fetch_all(&mut **conn_lock).await {
+        Ok(rows) => {
+            let table_names: Vec<String> = rows
+                .iter()
+                .map(|row| row.get::<String, _>(0))
+                .collect();
 
-    state.set(ManagerData::Tables(table_names));
-
-    Ok(())
+            state.set(ManagerData::Tables(table_names));
+        }
+        Err(e) => {
+            state.set(ManagerData::CommandError(format!("Database query failed: {}", e)));
+        }
+    }
 }

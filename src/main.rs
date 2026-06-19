@@ -36,11 +36,8 @@ async fn main() {
 
     connect(&mut state, conn_args).await;
 
-    let a = get_relation_names(&mut state).await;
-    if a.is_ok() {
-        println!("{:#?}",state.current_data);
-    } else {
-        println!("{:#?}",a.unwrap_err());
-    }
+    get_relation_names(&mut state).await;
+    println!("{:#?}",state.current_data);
+
 
 }
