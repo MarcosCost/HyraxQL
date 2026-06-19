@@ -65,4 +65,13 @@ impl DbProvider for SqlxConnection {
         // SQLx pool connections automatically return to the pool when they go out of scope (Drop).
         Ok(0)
     }
+
+    async fn driver_type(&self) -> Result<String, AppError> {
+        let conn_lock = self.conn.lock().unwrap();
+        Ok(conn_lock.backend_name().to_string())
+    }
+
+    fn as_any_connection(&self) -> &Mutex<sqlx::pool::PoolConnection<sqlx::Any>> {
+        &self.conn
+    }
 }

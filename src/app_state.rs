@@ -1,7 +1,9 @@
 use std::sync::mpsc::Sender;
 use crate::db::database::{DbPool};
 
+#[derive(Debug)]
 pub enum ManagerData {
+    Tables(Vec<String>),
     Rows(Vec<Vec<String>>),
     Columns(Vec<(String,String)>),  // Vec of (Name, Type) tuples
     ScalarInt(i64),
