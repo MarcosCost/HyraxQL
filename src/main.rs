@@ -1,43 +1,27 @@
+use std::collections::HashMap;
 use std::sync::mpsc::channel;
-use crate::{app_state::AppState, commands::tables::get_relation_names, misc::app_structs};
 
-use crate::commands::conn_init::connect;
-
-mod app_state;
-pub mod commands {
-    pub mod conn_init;
-    pub mod tables;
-}
-pub mod db {
-    pub mod sqlx_impl;
-    pub mod database;
-}
-pub mod misc {
-    pub mod app_enums;
-    pub mod app_structs;
-}
+use hyraxql::commands::list_tables::ListTables;
+use hyraxql::connection::ConnectionConfig;
+use hyraxql::engine::Engine;
 
 #[tokio::main]
-async fn main() { 
-    let (tx, _rx) = channel();       // Create the comunication channel for the engine to publidh events to the UI
-    let mut state = AppState::new(tx);
-    
+async fn main() {
+    let (tx, _rx) = channel();
+    let mut engine = Engine::new(tx);
 
-    // Testing
-    let conn_args = app_structs::ConnectionArgs {
-        db_type: "postgres".to_owned(),
-        db_name: "mydatabase".to_owned(),
-        db_user: "myuser".to_owned(),
-        db_pass: "mypassword".to_owned(),
+    let config = ConnectionConfig::Postgres {
         host: "localhost".to_owned(),
         port: 5432,
-        extra_params: None
+        user: "myuser".to_owned(),
+        password: "mypassword".to_owned(),
+        database: "mydatabase".to_owned(),
+        extra_params: HashMap::new(),
     };
 
-    connect(&mut state, conn_args).await;
+    engine.connect(config).await.unwrap();
 
-    get_relation_names(&mut state).await;
-    println!("{:#?}",state.current_data);
+    engine.execute(ListTables).await.unwrap();
 
-
+    println!("{:#?}", engine.state().current_data());
 }
