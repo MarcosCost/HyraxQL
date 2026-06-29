@@ -1,3 +1,7 @@
 /target
 # To spin up databases for testing
-compose.yml 
+compose.yml
+
+# For the documentation and landing page, goint to a seperate branch
+/docs/gh-page/
+CHANGES.md

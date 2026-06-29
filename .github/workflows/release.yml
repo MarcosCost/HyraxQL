@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -14,12 +17,15 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: hyraxql-linux
+            binary: hyraxql
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact: hyraxql-macos
+            binary: hyraxql
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: hyraxql-windows.exe
+            binary: hyraxql.exe
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -33,17 +39,26 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Rename binary
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.artifact }}
+
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: target/${{ matrix.target }}/release/hyraxql*
+          path: ${{ matrix.artifact }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: artifacts
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: "**/*"
+          files: artifacts/*

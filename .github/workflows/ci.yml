@@ -1,30 +1,47 @@
 # .github/workflows/ci.yml
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
+      - name: Install cargo-make
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-make
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
-          path: ~/.cargo
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Build
-        run: cargo build --verbose
-      - name: Install cargo-make
-        run: cargo install cargo-make
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Run tests
         run: cargo make test
+
       - name: Clippy (lints)
         run: cargo clippy -- -D warnings
+
       - name: Format check
         run: cargo fmt --check
