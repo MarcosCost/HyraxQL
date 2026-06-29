@@ -1,36 +1,20 @@
 use std::sync::mpsc::Sender;
 
 use crate::commands::Command;
+use crate::connection::ConnectionFactory;
 use crate::connection::Result as ConnResult;
-use crate::connection::{ConnectionConfig, ConnectionFactory};
+use crate::connection::factory::ConnectParams;
 use crate::engine::state::AppState;
 use crate::error::HyraxError;
 
 pub mod state;
 
-/// The central orchestrator of the HyraxQL engine.
-///
-/// The `Engine` owns the active connection and the application state.
-/// Consumers (GUI / TUI) interact with it by:
-///
-/// 1. Creating an `Engine` with an event channel sender.
-/// 2. Calling `connect()` to establish a connection.
-/// 3. Calling `execute()` with a `Command` to perform work.
-/// 4. Reading `state()` to update the UI.
-///
-/// # Extensibility
-///
-/// Because `Engine` talks to connections through the `Connection`
-/// trait and to operations through the `Command` trait, both axes
-/// can be extended without modifying the engine itself.
 pub struct Engine {
     connection: Option<Box<dyn crate::connection::Connection>>,
     state: AppState,
 }
 
 impl Engine {
-    /// Create a new engine.
-    ///
     /// `event_tx` is the channel used to signal the UI that state
     /// has changed (the engine sends `1` on every `set` call).
     pub fn new(event_tx: Sender<u16>) -> Self {
@@ -40,10 +24,7 @@ impl Engine {
         }
     }
 
-    /// Establish a connection using the given configuration.
-    ///
-    /// This replaces any previously active connection.
-    pub async fn connect(&mut self, config: ConnectionConfig) -> ConnResult<()> {
+    pub async fn connect(&mut self, config: ConnectParams) -> ConnResult<()> {
         let conn = ConnectionFactory::connect(config).await?;
         self.connection = Some(conn);
         Ok(())

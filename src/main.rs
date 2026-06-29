@@ -1,27 +1,32 @@
-use std::collections::HashMap;
-use std::sync::mpsc::channel;
+use std::io::{self, BufRead};
 
-use hyraxql::commands::list_tables::ListTables;
-use hyraxql::connection::ConnectionConfig;
-use hyraxql::engine::Engine;
+use hyraxql::connection::ConnectionFactory;
+use hyraxql::connection::factory::ConnectParams;
 
 #[tokio::main]
 async fn main() {
-    let (tx, _rx) = channel();
-    let mut engine = Engine::new(tx);
+    println!("Enter connection URL:");
+    let mut url = String::new();
+    io::stdin().lock().read_line(&mut url).unwrap();
+    let url = url.trim().to_string();
 
-    let config = ConnectionConfig::Postgres {
-        host: "localhost".to_owned(),
-        port: 5432,
-        user: "myuser".to_owned(),
-        password: "mypassword".to_owned(),
-        database: "mydatabase".to_owned(),
-        extra_params: HashMap::new(),
-    };
+    let conn = ConnectionFactory::connect(ConnectParams::Url(url))
+        .await
+        .expect("Failed to connect");
 
-    engine.connect(config).await.unwrap();
+    println!("Connected! Type: {}", conn.connection_type());
 
-    engine.execute(ListTables).await.unwrap();
-
-    println!("{:#?}", engine.state().current_data());
+    match conn.list_relations().await {
+        Ok(names) => {
+            if names.is_empty() {
+                println!("No relations found.");
+            } else {
+                println!("Relations:");
+                for name in &names {
+                    println!("  {name}");
+                }
+            }
+        }
+        Err(e) => println!("Error listing relations: {e}"),
+    }
 }

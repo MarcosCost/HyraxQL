@@ -8,16 +8,7 @@ use crate::error::HyraxError;
 
 pub mod url;
 
-/// A connection to a SQL database via the sqlx `Any` driver.
-///
-/// Supports PostgreSQL, MySQL, MariaDB, and SQLite through a single
-/// implementation.  The `connection_type` field distinguishes which
-/// SQL flavour is actually behind the pool.
-///
-/// # Thread safety
-///
-/// `AnyPool` is internally reference-counted and fully `Send + Sync`,
-/// so `SqlConnection` can be shared across tasks.
+/// A connection to a SQL database via the sqlx Anydriver.
 #[derive(Debug)]
 pub struct SqlConnection {
     pool: AnyPool,
@@ -40,9 +31,6 @@ impl Connection for SqlConnection {
     }
 
     /// Lists all user-facing tables in the current database.
-    ///
-    /// The SQL query is selected based on the backend because each
-    /// database stores table metadata differently.
     async fn list_relations(&self) -> Result<Vec<String>> {
         // Acquire a temporary connection to inspect the backend name.
         let conn = self
