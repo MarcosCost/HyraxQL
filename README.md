@@ -16,7 +16,7 @@
 
 ## 🧬 What is HyraxQL?
 
-HyraxQL is a minimalist database exploration tool built with **Rust**. It aims to provide a "middle ground" for developers who find full GUI clients (like DBeaver or PGAdmin) too heavy, but find raw `psql` or `mysql` shells too restrictive for quick data exploration.
+HyraxQL is a minimalist database exploration tool built with **Rust**. It aims to provide a "middle ground" for developers who find full GUI clients (like DBeaver or PGAdmin) too heavy, but find raw `psql` or `mysql` shells too unefficient for quick data exploration.
 
 Named after the Hyrax—a small, tough, and surprisingly agile animal—this tool is designed to be small in footprint but powerful in execution.
 
@@ -39,8 +39,6 @@ Named after the Hyrax—a small, tough, and surprisingly agile animal—this too
 
 HyraxQL is built on the shoulders of giants in the Rust ecosystem:
 - [**SQLx**](https://github.com/launchbadge/sqlx): For asynchronous, compile-time verified (planned) database interactions.
-- [**Clap**](https://github.com/clap-rs/clap): Powering the robust CLI argument parsing.
-- [**Rustyline**](https://github.com/kkawakam/rustyline): Providing the Readline-like interactive shell experience.
 - [**Tokio**](https://tokio.rs/): The asynchronous runtime driving the entire application.
 
 ---
@@ -54,14 +52,11 @@ HyraxQL is built on the shoulders of giants in the Rust ecosystem:
 ### Building from Source
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/hyraxql.git
+git clone https://github.com/MarcosCost/hyraxql.git
 cd hyraxql
 
-# Build for development
-cargo build
-
-# Run directly
-cargo run -- connect --url "sqlite::memory:"
+# Run dev mock binary
+cargo run
 ```
 
 ### Running Tests
@@ -74,10 +69,9 @@ cargo make test
 ## 🗺 Roadmap
 
 - [x] Basic PostgreSQL/MySQL/SQLite support.
-- [x] Interactive TUI loop.
-- [ ] Native query execution and result formatting.
 - [x] Table schema visualization.
 - [ ] Connection bookmarks/profiles.
+- [ ] Create UI for the developed library
 - [ ] NoSQL and column-oriented databases adapters.
 - [ ] Non-cli application.
 - [ ] Automatically generated simple and editable ER.
@@ -88,6 +82,7 @@ Keep in mind this is a side project and might have no active development done on
 
 ## 📚 Documentation
 
+### !Currently Unavailable!
 - [**Usage Guide**](docs/docs.md): Detailed command reference, flags, and keyboard shortcuts.
 
 ---
