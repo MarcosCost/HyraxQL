@@ -18,11 +18,6 @@ pub enum ManagerData {
     Idle,
 }
 
-/// The observable state of the application.
-///
-/// `AppState` owns the data that the UI layer displays and a channel
-/// for notifying the UI when that data changes.  It does **not** own
-/// the connection — that lives in `Engine`.
 #[derive(Debug)]
 pub struct AppState {
     pub current_data: ManagerData,

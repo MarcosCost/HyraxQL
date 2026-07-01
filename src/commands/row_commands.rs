@@ -1,0 +1,31 @@
+//  List of commands defined here:
+// get_rows - gets the first x rows in a collumn, defaults 50, take collumn names to filter, returns all if no filter
+//
+use async_trait::async_trait;
+
+use crate::commands::{Command, Result};
+use crate::connection::Connection;
+use crate::engine::state::{AppState, ManagerData};
+/*--------------------------------------------------------------------------------------------------------------------------------------- */
+pub struct GetRows {
+    size: u32,
+    cols: Vec<String>,
+}
+impl Default for GetRows {
+    fn default() -> GetRows {
+        GetRows {
+            size: 50,
+            cols: vec![],
+        }
+    }
+}
+
+#[async_trait]
+impl Command for GetRows {
+    async fn execute(&self, conn: &dyn Connection, state: &mut AppState) -> Result<()> {
+        let rows = conn.get_rows(self.size, self.cols.clone()).await?;
+        state.set(ManagerData::Rows(rows));
+        Ok(())
+    }
+}
+/*--------------------------------------------------------------------------------------------------------------------------------------- */
