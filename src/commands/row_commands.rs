@@ -8,8 +8,8 @@ use crate::connection::Connection;
 use crate::engine::state::{AppState, ManagerData};
 /*--------------------------------------------------------------------------------------------------------------------------------------- */
 pub struct GetRows {
-    size: u32,
-    cols: Vec<String>,
+    pub size: u32,
+    pub cols: Vec<String>,
 }
 impl Default for GetRows {
     fn default() -> GetRows {
@@ -23,7 +23,13 @@ impl Default for GetRows {
 #[async_trait]
 impl Command for GetRows {
     async fn execute(&self, conn: &dyn Connection, state: &mut AppState) -> Result<()> {
-        let rows = conn.get_rows(self.size, self.cols.clone()).await?;
+        let rows = conn
+            .get_rows(
+                state.select_table.clone().unwrap().as_str(),
+                self.size,
+                self.cols.clone(),
+            )
+            .await?;
         state.set(ManagerData::Rows(rows));
         Ok(())
     }

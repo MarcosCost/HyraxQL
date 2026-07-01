@@ -61,7 +61,7 @@ impl ConnectionFactory {
         match arg {
             ConnectParams::Config(conf) => config = conf,
             ConnectParams::Url(url) => {
-                let valid_and_name = validate_sql(url.deref());
+                let valid_and_name = validate_url(url.deref());
                 if valid_and_name.0 {
                     let pool = create_pool(&url).await?;
                     return Ok(Box::new(SqlConnection::new(pool, valid_and_name.1)));
@@ -160,7 +160,7 @@ async fn create_pool(url: &str) -> Result<sqlx::AnyPool> {
         .map_err(|e| HyraxError::ConnectionError(e.to_string()))
 }
 
-fn validate_sql(url: &str) -> (bool, String) {
+fn validate_url(url: &str) -> (bool, String) {
     let re = Regex::new(r"^sqlite://").unwrap();
     if re.is_match(url) {
         return (true, "sqlite".into());
@@ -181,29 +181,29 @@ mod tests {
     // ── SQLite ──────────────────────────────────────────────────────────────
 
     #[test]
-    fn test_validate_sqlite_simple_file() {
-        let (ok, kind) = validate_sql("sqlite://data.db");
+    fn test_validate_urlite_simple_file() {
+        let (ok, kind) = validate_url("sqlite://data.db");
         assert!(ok);
         assert_eq!(kind, "sqlite");
     }
 
     #[test]
-    fn test_validate_sqlite_with_path() {
-        let (ok, kind) = validate_sql("sqlite:///home/user/mydb.sqlite");
+    fn test_validate_urlite_with_path() {
+        let (ok, kind) = validate_url("sqlite:///home/user/mydb.sqlite");
         assert!(ok);
         assert_eq!(kind, "sqlite");
     }
 
     #[test]
-    fn test_validate_sqlite_in_memory() {
-        let (ok, kind) = validate_sql("sqlite://:memory:");
+    fn test_validate_urlite_in_memory() {
+        let (ok, kind) = validate_url("sqlite://:memory:");
         assert!(ok);
         assert_eq!(kind, "sqlite");
     }
 
     #[test]
-    fn test_validate_sqlite_with_params() {
-        let (ok, kind) = validate_sql("sqlite://test.db?mode=memory&cache=shared");
+    fn test_validate_urlite_with_params() {
+        let (ok, kind) = validate_url("sqlite://test.db?mode=memory&cache=shared");
         assert!(ok);
         assert_eq!(kind, "sqlite");
     }
@@ -212,28 +212,28 @@ mod tests {
 
     #[test]
     fn test_validate_postgres_standard() {
-        let (ok, kind) = validate_sql("postgres://admin:secret@localhost:5432/mydb");
+        let (ok, kind) = validate_url("postgres://admin:secret@localhost:5432/mydb");
         assert!(ok);
         assert_eq!(kind, "postgres");
     }
 
     #[test]
     fn test_validate_postgres_no_port() {
-        let (ok, kind) = validate_sql("postgres://admin:secret@localhost/mydb");
+        let (ok, kind) = validate_url("postgres://admin:secret@localhost/mydb");
         assert!(ok);
         assert_eq!(kind, "postgres");
     }
 
     #[test]
     fn test_validate_postgres_with_params() {
-        let (ok, kind) = validate_sql("postgres://u:p@host:5432/db?sslmode=require");
+        let (ok, kind) = validate_url("postgres://u:p@host:5432/db?sslmode=require");
         assert!(ok);
         assert_eq!(kind, "postgres");
     }
 
     #[test]
     fn test_validate_postgres_special_chars_in_password() {
-        let (ok, kind) = validate_sql("postgres://admin:p%40ss@dbhost:5432/production");
+        let (ok, kind) = validate_url("postgres://admin:p%40ss@dbhost:5432/production");
         assert!(ok);
         assert_eq!(kind, "postgres");
     }
@@ -242,14 +242,14 @@ mod tests {
 
     #[test]
     fn test_validate_mysql_standard() {
-        let (ok, kind) = validate_sql("mysql://root:root@127.0.0.1:3306/myshop");
+        let (ok, kind) = validate_url("mysql://root:root@127.0.0.1:3306/myshop");
         assert!(ok);
         assert_eq!(kind, "mysql");
     }
 
     #[test]
     fn test_validate_mysql_domain_host() {
-        let (ok, kind) = validate_sql("mysql://app:pass@mysql.example.com:3306/staging");
+        let (ok, kind) = validate_url("mysql://app:pass@mysql.example.com:3306/staging");
         assert!(ok);
         assert_eq!(kind, "mysql");
     }
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_validate_mariadb_standard() {
-        let (ok, kind) = validate_sql("mariadb://maria:maria_pass@192.168.1.50:3307/warehouse");
+        let (ok, kind) = validate_url("mariadb://maria:maria_pass@192.168.1.50:3307/warehouse");
         assert!(ok);
         assert_eq!(kind, "mariadb");
     }
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn test_validate_mariadb_with_params() {
         let url = "mariadb://admin:pass@server:3306/db?connectTimeout=10&compress=true";
-        let (ok, kind) = validate_sql(url);
+        let (ok, kind) = validate_url(url);
         assert!(ok);
         assert_eq!(kind, "mariadb");
     }
@@ -275,93 +275,93 @@ mod tests {
 
     #[test]
     fn test_validate_empty_string() {
-        let (ok, _kind) = validate_sql("");
+        let (ok, _kind) = validate_url("");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_no_scheme() {
-        let (ok, _kind) = validate_sql("just_a_string");
+        let (ok, _kind) = validate_url("just_a_string");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_missing_password() {
-        let (ok, _kind) = validate_sql("postgres://admin@localhost:5432/db");
+        let (ok, _kind) = validate_url("postgres://admin@localhost:5432/db");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_missing_user() {
-        let (ok, _kind) = validate_sql("postgres://:secret@localhost:5432/db");
+        let (ok, _kind) = validate_url("postgres://:secret@localhost:5432/db");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_missing_host() {
-        let (ok, _kind) = validate_sql("postgres://u:p@:5432/db");
+        let (ok, _kind) = validate_url("postgres://u:p@:5432/db");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_missing_database() {
-        let (ok, _kind) = validate_sql("postgres://u:p@host:5432/");
+        let (ok, _kind) = validate_url("postgres://u:p@host:5432/");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_unsupported_scheme() {
-        let (ok, _kind) = validate_sql("mongodb://u:p@host:27017/mydb");
+        let (ok, _kind) = validate_url("mongodb://u:p@host:27017/mydb");
         assert!(ok);
     }
 
     #[test]
     fn test_validate_whitespace_in_url() {
-        let (ok, _kind) = validate_sql("postgres://u:p@host:5432/db name");
+        let (ok, _kind) = validate_url("postgres://u:p@host:5432/db name");
         assert!(!ok);
     }
 
     #[test]
-    fn test_validate_sqlite_uppercase_scheme() {
-        let (ok, _kind) = validate_sql("SQLITE://data.db");
+    fn test_validate_urlite_uppercase_scheme() {
+        let (ok, _kind) = validate_url("SQLITE://data.db");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_postgres_uppercase_scheme() {
-        let (ok, kind) = validate_sql("POSTGRES://u:p@host:5432/db");
+        let (ok, kind) = validate_url("POSTGRES://u:p@host:5432/db");
         assert!(ok);
         assert_eq!(kind, "POSTGRES");
     }
 
     #[test]
     fn test_validate_port_non_numeric() {
-        let (ok, _kind) = validate_sql("postgres://u:p@host:abc/db");
+        let (ok, _kind) = validate_url("postgres://u:p@host:abc/db");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_trailing_slash() {
-        let (ok, _kind) = validate_sql("postgres://u:p@host:5432/db/");
+        let (ok, _kind) = validate_url("postgres://u:p@host:5432/db/");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_double_at_sign() {
-        let (ok, _kind) = validate_sql("postgres://u:p@@host:5432/db");
+        let (ok, _kind) = validate_url("postgres://u:p@@host:5432/db");
         assert!(!ok);
     }
 
     #[test]
     fn test_validate_newline_in_url() {
-        let (ok, _kind) = validate_sql("postgres://u:p@host:5432/db\n");
+        let (ok, _kind) = validate_url("postgres://u:p@host:5432/db\n");
         assert!(!ok);
     }
 
     #[test]
-    fn test_validate_sqlite_empty_path() {
+    fn test_validate_urlite_empty_path() {
         // ``^sqlite://`` matches even if nothing follows.
-        let (ok, kind) = validate_sql("sqlite://");
+        let (ok, kind) = validate_url("sqlite://");
         assert!(ok);
         assert_eq!(kind, "sqlite");
     }

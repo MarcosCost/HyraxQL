@@ -2,14 +2,12 @@ use std::io::{self, BufRead};
 use std::sync::mpsc;
 use std::thread::sleep;
 use std::time::Duration;
+use std::vec;
 
-use hyraxql::commands::Command;
-use hyraxql::commands::list_rel_head::ListHeaders;
-use hyraxql::commands::list_tables::ListTables;
-use hyraxql::commands::select_table::SelTable;
-use hyraxql::connection::ConnectionFactory;
+use hyraxql::commands::row_commands::GetRows;
+use hyraxql::commands::table_commands::{ListHeaders, ListTables, SelTable};
 use hyraxql::connection::factory::ConnectParams;
-use hyraxql::engine::state::AppState;
+use hyraxql::engine::Engine;
 
 ///
 ///
@@ -22,15 +20,20 @@ async fn main() {
     println!("Enter connection URL:");
     let mut url = String::new();
     io::stdin().lock().read_line(&mut url).unwrap();
-    let url = url.trim().to_string();
+    let mut url = url.trim().to_string();
 
     let mut tentativa = 1;
 
-    let conn = loop {
-        match ConnectionFactory::connect(ConnectParams::Url(url.clone())).await {
-            Ok(connection) => {
+    let (_tx, _rx) = mpsc::channel();
+    let mut engine = Engine::new(_tx);
+
+    url = "postgres://myuser:mypassword@localhost:5432/mydatabase".into();
+
+    loop {
+        match engine.connect(ConnectParams::Url(url.clone())).await {
+            Ok(()) => {
                 println!("Connection established {} trys(s)!", tentativa);
-                break connection;
+                break;
             }
             Err(err) => {
                 eprintln!("Trys #{} failed: {}", tentativa, err);
@@ -42,31 +45,42 @@ async fn main() {
                 sleep(Duration::from_secs(3));
             }
         }
-    };
+    }
 
-    println!("Connected! Type: {}", conn.connection_type());
+    println!("Connected!");
 
-    // Set up the command infrastructure.
-    let (_tx, _rx) = mpsc::channel();
-    let mut state = AppState::new(_tx);
-
-    if let Err(e) = ListTables.execute(&*conn, &mut state).await {
+    if let Err(e) = engine.execute(ListTables).await {
         eprintln!("Error listing relations: {e}");
         return;
     }
+    print!("{:#?}", engine.state().current_data);
 
-    let cmd = SelTable {
-        nome: "people".into(),
-    };
-    if let Err(e) = cmd.execute(&*conn, &mut state).await {
+    if let Err(e) = engine
+        .execute(SelTable {
+            nome: "people".into(),
+        })
+        .await
+    {
         eprintln!("Error Setting relations: {e}");
         return;
     }
 
-    let cmd = ListHeaders;
-    if let Err(e) = cmd.execute(&*conn, &mut state).await {
+    if let Err(e) = engine.execute(ListHeaders).await {
         eprintln!("Error listing relations: {e}");
         return;
     }
-    print!("{:?}", state.current_data)
+    print!("{:#?}", engine.state().current_data);
+
+    if let Err(e) = engine
+        .execute(GetRows {
+            size: 10,
+            cols: vec!["id".to_owned(), "fname".to_owned()],
+        })
+        .await
+    {
+        eprintln!("Error listing relations: {e}");
+        return;
+    }
+
+    print!("{:#?}", engine.state().current_data);
 }

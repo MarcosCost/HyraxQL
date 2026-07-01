@@ -15,7 +15,12 @@ pub trait Connection: Debug + Send + Sync {
     fn connection_type(&self) -> &str;
     async fn list_relations(&self) -> Result<Vec<String>>;
     async fn list_rel_headers(&self, sel_tbl: &str) -> Result<Vec<(String, String)>>;
-    async fn get_rows(&self, size: u32, cols: Vec<String>) -> Result<Vec<Vec<String>>>;
+    async fn get_rows(
+        &self,
+        sel_tbl: &str,
+        size: u32,
+        cols: Vec<String>,
+    ) -> Result<Vec<Vec<String>>>;
 }
 
 pub mod factory;
