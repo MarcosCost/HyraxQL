@@ -19,6 +19,7 @@ pub trait Connection: Debug + Send + Sync {
         &self,
         sel_tbl: &str,
         size: u32,
+        page: u32,
         cols: Vec<String>,
     ) -> Result<Vec<Vec<String>>>;
 }

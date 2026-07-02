@@ -116,6 +116,7 @@ impl Connection for SqlConnection {
         &self,
         sel_tbl: &str,
         size: u32,
+        page: u32,
         cols: Vec<String>,
     ) -> Result<Vec<Vec<String>>> {
         let conn = self
@@ -140,7 +141,7 @@ impl Connection for SqlConnection {
                 }
                 // result
                 format!(
-                    "SELECT {} FROM \"{}\" LIMIT $1;",
+                    "SELECT {} FROM \"{}\" LIMIT $1 OFFSET $2;",
                     what,
                     sel_tbl.replace('"', "\"\"")
                 )
@@ -155,7 +156,7 @@ impl Connection for SqlConnection {
                     what = "*".to_owned();
                 }
                 format!(
-                    "SELECT {} FROM `{}` LIMIT ?;",
+                    "SELECT {} FROM `{}` LIMIT ? OFFSET ?;",
                     what,
                     sel_tbl.replace('`', "``")
                 )
@@ -170,7 +171,7 @@ impl Connection for SqlConnection {
                     what = "*".to_owned();
                 }
                 format!(
-                    "SELECT {} FROM \"{}\" LIMIT ?1;",
+                    "SELECT {} FROM \"{}\" LIMIT $1 OFFSET $2;",
                     what,
                     sel_tbl.replace('"', "\"\"")
                 )
@@ -184,6 +185,7 @@ impl Connection for SqlConnection {
 
         let rows = sqlx::query(AssertSqlSafe(query_str))
             .bind(size as i64)
+            .bind((size * page) as i64)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| HyraxError::QueryError(e.to_string()))?;

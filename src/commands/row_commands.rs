@@ -9,12 +9,14 @@ use crate::engine::state::{AppState, ManagerData};
 /*--------------------------------------------------------------------------------------------------------------------------------------- */
 pub struct GetRows {
     pub size: u32,
+    pub page: u32,
     pub cols: Vec<String>,
 }
 impl Default for GetRows {
     fn default() -> GetRows {
         GetRows {
             size: 50,
+            page: 1,
             cols: vec![],
         }
     }
@@ -27,6 +29,7 @@ impl Command for GetRows {
             .get_rows(
                 state.select_table.clone().unwrap().as_str(),
                 self.size,
+                self.page,
                 self.cols.clone(),
             )
             .await?;

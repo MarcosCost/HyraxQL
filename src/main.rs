@@ -74,6 +74,7 @@ async fn main() {
     if let Err(e) = engine
         .execute(GetRows {
             size: 10,
+            page: 0,
             cols: vec!["id".to_owned(), "fname".to_owned()],
         })
         .await
