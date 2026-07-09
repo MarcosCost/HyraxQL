@@ -20,7 +20,7 @@ async fn main() {
     println!("Enter connection URL:");
     let mut url = String::new();
     io::stdin().lock().read_line(&mut url).unwrap();
-    let mut url = url.trim().to_string();
+    //let mut url = url.trim().to_string();
 
     let mut tentativa = 1;
 
