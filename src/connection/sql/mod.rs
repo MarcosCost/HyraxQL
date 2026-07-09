@@ -196,9 +196,9 @@ impl Connection for SqlConnection {
     }
 }
 
-/////////////////////////////
-///     Helpers     ///
-////////////////////////////
+///////////////////////////
+//     Helpers     //
+//////////////////////////
 
 fn sanitize_value(row: &AnyRow, i: usize) -> String {
     if let Ok(v) = row.try_get::<Option<String>, _>(i) {
