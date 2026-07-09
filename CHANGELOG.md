@@ -10,7 +10,3 @@ All notable changes to this project will be documented in this file.
 
 ### Security
 - Added MIT License
-
-## [0.1.0] - 2026-05-21
-### codebase refactor
-- Refactor the codebase to decouple tui and app logic

@@ -1,9 +1,5 @@
 use std::collections::HashMap;
 
-/// Build a connection URL for database types that use the
-/// `scheme://user:pass@host:port/dbname?params` format.
-///
-/// Used for PostgreSQL, MySQL, MariaDB, and similar databases.
 pub fn build_connection_url(
     scheme: &str,
     host: &str,
@@ -21,7 +17,6 @@ pub fn build_connection_url(
     url
 }
 
-/// Build a connection URL for SQLite (`sqlite://path`).
 pub fn build_sqlite_url(path: &str, extra_params: &HashMap<String, String>) -> String {
     let mut url = format!("sqlite://{}", path);
     append_params(&mut url, extra_params);
