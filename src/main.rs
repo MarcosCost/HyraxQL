@@ -10,9 +10,7 @@ use hyraxql::connection::factory::ConnectParams;
 use hyraxql::engine::Engine;
 
 ///
-///
 ///     THIS MAIN IS A MOCK BINARY. ITS HERE PURELLY SO I CAN RUN THE ENGINE BEFORE BUILDING ANY UI
-///
 ///
 
 #[tokio::main]
@@ -20,13 +18,17 @@ async fn main() {
     println!("Enter connection URL:");
     let mut url = String::new();
     io::stdin().lock().read_line(&mut url).unwrap();
-    //let mut url = url.trim().to_string();
+    url = url.trim().to_string();
 
     let mut tentativa = 1;
 
+    if 0 == 1 {
+        print!("{}", url)
+    }
+
     let (_tx, _rx) = mpsc::channel();
     let mut engine = Engine::new(_tx);
-
+    _ = engine.save_profile();
     url = "postgres://myuser:mypassword@localhost:5432/mydatabase".into();
 
     loop {
@@ -82,6 +84,5 @@ async fn main() {
         eprintln!("Error listing relations: {e}");
         return;
     }
-
     print!("{:#?}", engine.state().current_data);
 }

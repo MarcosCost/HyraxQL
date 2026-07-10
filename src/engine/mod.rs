@@ -1,4 +1,8 @@
+use std::ops::Deref;
 use std::sync::mpsc::Sender;
+
+use keyring::Entry;
+use users::{get_current_uid, get_user_by_uid};
 
 use crate::commands::Command;
 use crate::connection::ConnectionFactory;
@@ -40,6 +44,34 @@ impl Engine {
             .ok_or_else(|| HyraxError::EngineError("No active connection".into()))?;
 
         command.execute(conn.as_ref(), &mut self.state).await?;
+        Ok(())
+    }
+
+    // TODO: checkif there is a keyring service active and warn about unencrypted data if so. cause I dont lol
+    /// Save the Current connection to bookmarks (~/.local/hyraxql/bookmarks)
+    pub fn save_profile(&self) -> Result<(), HyraxError> {
+        //get user logged as a String
+        let user: String = get_user_by_uid(get_current_uid())
+            .unwrap()
+            .name()
+            .to_str()
+            .unwrap()
+            .to_owned();
+        // Check if eyring service exists
+
+        //Check if hyraxql encryption key exists
+        let key128: u128;
+        match Entry::get_password(
+            &(Entry::new("hyraxql", format!("{}_hyraxql", user).deref()).unwrap()),
+        ) {
+            Ok(key) => key128 = key.parse::<u128>().unwrap(),
+            Err(_e) => key128 = rand::random(),
+        }
+        println!("{}", key128);
+        // if not create else create
+        // take url encript over aes-csm key hyraxql
+        // print EncUrl to ~/.local/hyrax/user_connects
+
         Ok(())
     }
 
