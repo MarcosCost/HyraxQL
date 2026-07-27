@@ -1,7 +1,8 @@
 use std::ops::Deref;
+use std::ops::DerefMut;
 use std::sync::mpsc::Sender;
 
-use keyring::Entry;
+use keyring::{Entry, Error};
 use users::{get_current_uid, get_user_by_uid};
 
 use crate::commands::Command;
@@ -9,6 +10,7 @@ use crate::connection::ConnectionFactory;
 use crate::connection::Result as ConnResult;
 use crate::connection::factory::ConnectParams;
 use crate::engine::state::AppState;
+use crate::engine::state::ManagerData;
 use crate::error::HyraxError;
 
 pub mod state;
@@ -47,28 +49,27 @@ impl Engine {
         Ok(())
     }
 
-    // TODO: checkif there is a keyring service active and warn about unencrypted data if so. cause I dont lol
+    // TODO: check if there is a keyring service active and warn about unencrypted data if so. cause I dont lol
     /// Save the Current connection to bookmarks (~/.local/hyraxql/bookmarks)
-    pub fn save_profile(&self) -> Result<(), HyraxError> {
-        //get user logged as a String
+    // Needs to be called at the same time as connect cause sqlx doesnt hold the url anywhere
+    pub fn save_profile(&mut self, url: &str) -> Result<(), HyraxError> {
         let user: String = get_user_by_uid(get_current_uid())
             .unwrap()
             .name()
             .to_str()
             .unwrap()
             .to_owned();
-        // Check if eyring service exists
 
-        //Check if hyraxql encryption key exists
-        let key128: u128;
-        match Entry::get_password(
-            &(Entry::new("hyraxql", format!("{}_hyraxql", user).deref()).unwrap()),
-        ) {
-            Ok(key) => key128 = key.parse::<u128>().unwrap(),
-            Err(_e) => key128 = rand::random(),
+        // Check if keyring service exists
+        if !keyring_backend_available() {
+            self.state.current_data = ManagerData::ScalarString("No Keyring service available, Data will be stored unencrypted in .local/hyraxql/bookmarks/_user_".to_owned());
+
+            return Ok(());
         }
-        println!("{}", key128);
+        //Check if hyraxql encryption key exists
+
         // if not create else create
+
         // take url encript over aes-csm key hyraxql
         // print EncUrl to ~/.local/hyrax/user_connects
 
@@ -83,5 +84,21 @@ impl Engine {
     /// Returns `true` when a connection is active.
     pub fn is_connected(&self) -> bool {
         self.connection.is_some()
+    }
+}
+
+/// Checks wheter or not a keyring service is available in the system
+fn keyring_backend_available() -> bool {
+    let entry = match Entry::new("keyring-probe", "probe-user") {
+        Ok(e) => e,
+        Err(_) => return false,
+    };
+
+    match entry.get_password() {
+        Ok(_) => true,
+        Err(Error::NoEntry) => true,
+        Err(Error::NoStorageAccess(_)) => false,
+        Err(Error::PlatformFailure(_)) => false,
+        Err(_) => false,
     }
 }

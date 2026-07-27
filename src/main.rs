@@ -1,4 +1,5 @@
 use std::io::{self, BufRead};
+use std::ops::Deref;
 use std::sync::mpsc;
 use std::thread::sleep;
 use std::time::Duration;
@@ -28,7 +29,7 @@ async fn main() {
 
     let (_tx, _rx) = mpsc::channel();
     let mut engine = Engine::new(_tx);
-    _ = engine.save_profile();
+    _ = engine.save_profile(url.deref());
     url = "postgres://myuser:mypassword@localhost:5432/mydatabase".into();
 
     loop {

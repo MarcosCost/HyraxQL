@@ -31,7 +31,6 @@ impl Connection for SqlConnection {
     fn connection_type(&self) -> &str {
         &self.connection_type
     }
-
     async fn list_relations(&self) -> Result<Vec<String>> {
         // Acquire a temporary connection to inspect the backend name.
         let conn = self
