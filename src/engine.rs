@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::fs::create_dir_all;
 use std::io::Write;
 use std::path;
 use std::sync::mpsc::Sender;
@@ -50,7 +51,6 @@ impl Engine {
         Ok(())
     }
 
-    // TODO: check if there is a keyring service active and warn about unencrypted data if so. cause I dont lol
     /// Save the Current connection to bookmarks (~/.local/hyraxql/bookmarks)
     // Needs to be called at the same time as connect cause sqlx doesnt hold the url anywhere
     pub fn save_profile(&mut self, url: &str) -> Result<(), HyraxError> {
@@ -64,7 +64,7 @@ impl Engine {
         // Check if keyring service exists
         if !keyring_backend_available() {
             self.state.current_data = ManagerData::ScalarString("No Keyring service available, Data will be stored unencrypted in .local/hyraxql/bookmarks/_user_".to_owned());
-            // todo dont forget to save after function is done
+            write_to_local(&format!("bookmarks/{}", user), name, content);
             return Ok(());
         }
         //Check if hyraxql encryption key exists
@@ -105,20 +105,28 @@ fn keyring_backend_available() -> bool {
 }
 
 /// Writes to .local/hyrax/`path`
-fn write_to_local(path_from_hyrax: &str, name: &str, content: &str) -> bool {
-    let mut path = dirs::home_dir();
-    match path {
-        Some(home) => path = Some(home.join(".local/hyrax").join(path_from_hyrax).join(name)),
+fn write_to_local(path_from_hyrax: &str, file_name: Option<&str>, content: &str) -> bool {
+    let home = match dirs::home_dir() {
+        Some(home) => home,
         None => return false,
+    };
+
+    let dir_path = home.join(".local/hyrax").join(path_from_hyrax);
+    if create_dir_all(&dir_path).is_err() {
+        return false;
     }
 
-    let mut file = match File::create(path.unwrap()) {
+    let name;
+    match file_name {
+        Some(newname) => name = newname,
+        None => name = content,
+    }
+
+    let file_path = dir_path.join(name);
+    let mut file = match File::create(&file_path) {
         Ok(file) => file,
         Err(_) => return false,
     };
 
-    match file.write_all(content.as_bytes()) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    file.write_all(content.as_bytes()).is_ok()
 }
