@@ -1,4 +1,4 @@
-//  List of commands defined here:
+// List of commands defined here:
 // get_rows - gets the first x rows in a collumn, defaults 50, take collumn names to filter, returns all if no filter
 //
 use async_trait::async_trait;

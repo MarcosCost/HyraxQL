@@ -1,5 +1,6 @@
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::fs::File;
+use std::io::Write;
+use std::path;
 use std::sync::mpsc::Sender;
 
 use keyring::{Entry, Error};
@@ -63,7 +64,7 @@ impl Engine {
         // Check if keyring service exists
         if !keyring_backend_available() {
             self.state.current_data = ManagerData::ScalarString("No Keyring service available, Data will be stored unencrypted in .local/hyraxql/bookmarks/_user_".to_owned());
-
+            // todo dont forget to save after function is done
             return Ok(());
         }
         //Check if hyraxql encryption key exists
@@ -99,6 +100,25 @@ fn keyring_backend_available() -> bool {
         Err(Error::NoEntry) => true,
         Err(Error::NoStorageAccess(_)) => false,
         Err(Error::PlatformFailure(_)) => false,
+        Err(_) => false,
+    }
+}
+
+/// Writes to .local/hyrax/`path`
+fn write_to_local(path_from_hyrax: &str, name: &str, content: &str) -> bool {
+    let mut path = dirs::home_dir();
+    match path {
+        Some(home) => path = Some(home.join(".local/hyrax").join(path_from_hyrax).join(name)),
+        None => return false,
+    }
+
+    let mut file = match File::create(path.unwrap()) {
+        Ok(file) => file,
+        Err(_) => return false,
+    };
+
+    match file.write_all(content.as_bytes()) {
+        Ok(_) => true,
         Err(_) => false,
     }
 }
