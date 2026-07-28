@@ -1,23 +1,24 @@
-use std::fs::File;
-use std::fs::create_dir_all;
-use std::io::Write;
-use std::sync::mpsc::Sender;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
+use std::{
+    fs::{File, create_dir_all},
+    io::Write,
+    sync::mpsc::Sender,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use aes_gcm::Nonce;
-use aes_gcm::aead::Aead;
-use aes_gcm::{Aes256Gcm, Key, KeyInit, aead::Generate};
+use aes_gcm::{
+    Aes256Gcm, Key, KeyInit, Nonce,
+    aead::{Aead, Generate},
+};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use keyring::{Entry, Error};
 use users::{get_current_uid, get_user_by_uid};
 
-use crate::commands::Command;
-use crate::connection::ConnectionFactory;
-use crate::connection::Result as ConnResult;
-use crate::connection::factory::ConnectParams;
-use crate::engine::state::AppState;
-use crate::engine::state::ManagerData;
-use crate::error::HyraxError;
+use crate::{
+    commands::Command,
+    connection::{ConnectionFactory, Result as ConnResult, factory::ConnectParams},
+    engine::state::{AppState, ManagerData},
+    error::HyraxError,
+};
 
 pub mod state;
 
@@ -55,7 +56,6 @@ impl Engine {
         Ok(())
     }
 
-    //TODO: write_to_local can write custom names for profiles saves, however currently save profile doesnt handle that
     /// Save the Current connection to bookmarks (~/.local/hyraxql/bookmarks/user)
     pub fn save_profile(&mut self, url: &str) -> Result<(), HyraxError> {
         let user = get_user_by_uid(get_current_uid())
@@ -65,26 +65,27 @@ impl Engine {
             .ok_or_else(|| HyraxError::EngineError("Invalid username".to_owned()))?
             .to_owned();
 
-        // Check if keyring service exists and save it un-encripted if not
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+
+        let dir_path = format!("bookmarks/{}", user);
+        let file_name = format!("Connection_{}", timestamp);
+
+        // Check if keyring service exists and save it unencrypted if not
         if !keyring_backend_available() {
-            self.state.current_data = ManagerData::ScalarString("No Keyring service available, Data will be stored unencrypted in .local/hyraxql/bookmarks/_user_".to_owned());
-            write_to_local(
-                &format!("bookmarks/{}", user),
-                Some(&format!(
-                    "Connection_{}",
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_millis()
-                )),
-                url,
+            self.state.current_data = ManagerData::ScalarString(
+                "No Keyring service available, Data will be stored unencrypted in .local/hyraxql/bookmarks/_user_".to_owned()
             );
+            write_to_local(&dir_path, Some(&file_name), url);
             return Ok(());
         }
 
         // Get/create an encryption key for this user
         let entry = Entry::new("hyraxql", &user)
             .map_err(|e| HyraxError::EngineError(format!("Failed to access keyring: {e}")))?;
+
         let key_bytes: Vec<u8> = match entry.get_secret() {
             Ok(bytes) => bytes,
             Err(Error::NoEntry) => {
@@ -104,22 +105,19 @@ impl Engine {
             .try_into()
             .map_err(|_| HyraxError::EngineError("stored key has unexpected length".into()))?;
 
-        // take url encript over aes-csm key hyraxql
+        // Encrypt URL over AES-GCM
         let cipher = Aes256Gcm::new(&key.into());
         let nonce = Nonce::generate();
-        let cipherurl = cipher.encrypt(&nonce, url.as_bytes()).unwrap();
+        let ciphertext = cipher
+            .encrypt(&nonce, url.as_bytes())
+            .map_err(|e| HyraxError::EngineError(format!("Encryption failed: {e}")))?;
 
-        write_to_local(
-            &format!("bookmarks/{}", user),
-            Some(&format!(
-                "Connection_{}",
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis()
-            )),
-            &String::from_utf8(cipherurl).unwrap(),
-        );
+        let mut combined_payload = nonce.to_vec();
+        combined_payload.extend_from_slice(&ciphertext);
+
+        let encoded_data = BASE64.encode(&combined_payload);
+
+        write_to_local(&dir_path, Some(&file_name), &encoded_data);
 
         Ok(())
     }
