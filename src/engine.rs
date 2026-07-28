@@ -161,11 +161,10 @@ fn write_to_local(path_from_hyrax: &str, file_name: Option<&str>, content: &str)
         return false;
     }
 
-    let name;
-    match file_name {
-        Some(newname) => name = newname,
-        None => name = content,
-    }
+    let name = match file_name {
+        Some(newname) => newname,
+        None => content,
+    };
 
     let file_path = dir_path.join(name);
     let mut file = match File::create(&file_path) {
