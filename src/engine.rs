@@ -1,9 +1,13 @@
 use std::fs::File;
 use std::fs::create_dir_all;
 use std::io::Write;
-use std::path;
 use std::sync::mpsc::Sender;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
+use aes_gcm::Nonce;
+use aes_gcm::aead::Aead;
+use aes_gcm::{Aes256Gcm, Key, KeyInit, aead::Generate};
 use keyring::{Entry, Error};
 use users::{get_current_uid, get_user_by_uid};
 
@@ -51,28 +55,71 @@ impl Engine {
         Ok(())
     }
 
-    /// Save the Current connection to bookmarks (~/.local/hyraxql/bookmarks)
-    // Needs to be called at the same time as connect cause sqlx doesnt hold the url anywhere
+    //TODO: write_to_local can write custom names for profiles saves, however currently save profile doesnt handle that
+    /// Save the Current connection to bookmarks (~/.local/hyraxql/bookmarks/user)
     pub fn save_profile(&mut self, url: &str) -> Result<(), HyraxError> {
-        let user: String = get_user_by_uid(get_current_uid())
-            .unwrap()
+        let user = get_user_by_uid(get_current_uid())
+            .ok_or_else(|| HyraxError::EngineError("User not found".to_owned()))?
             .name()
             .to_str()
-            .unwrap()
+            .ok_or_else(|| HyraxError::EngineError("Invalid username".to_owned()))?
             .to_owned();
 
-        // Check if keyring service exists
+        // Check if keyring service exists and save it un-encripted if not
         if !keyring_backend_available() {
             self.state.current_data = ManagerData::ScalarString("No Keyring service available, Data will be stored unencrypted in .local/hyraxql/bookmarks/_user_".to_owned());
-            write_to_local(&format!("bookmarks/{}", user), name, content);
+            write_to_local(
+                &format!("bookmarks/{}", user),
+                Some(&format!(
+                    "Connection_{}",
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis()
+                )),
+                url,
+            );
             return Ok(());
         }
-        //Check if hyraxql encryption key exists
 
-        // if not create else create
+        // Get/create an encryption key for this user
+        let entry = Entry::new("hyraxql", &user)
+            .map_err(|e| HyraxError::EngineError(format!("Failed to access keyring: {e}")))?;
+        let key_bytes: Vec<u8> = match entry.get_secret() {
+            Ok(bytes) => bytes,
+            Err(Error::NoEntry) => {
+                let local_key = Key::<Aes256Gcm>::generate();
+                entry
+                    .set_secret(local_key.as_slice())
+                    .map_err(|e| HyraxError::EngineError(format!("Failed to save new key: {e}")))?;
+                local_key.to_vec()
+            }
+            Err(e) => {
+                return Err(HyraxError::EngineError(format!(
+                    "Unhandled Error getting/creating encrypt key: {e}"
+                )));
+            }
+        };
+        let key: [u8; 32] = key_bytes
+            .try_into()
+            .map_err(|_| HyraxError::EngineError("stored key has unexpected length".into()))?;
 
         // take url encript over aes-csm key hyraxql
-        // print EncUrl to ~/.local/hyrax/user_connects
+        let cipher = Aes256Gcm::new(&key.into());
+        let nonce = Nonce::generate();
+        let cipherurl = cipher.encrypt(&nonce, url.as_bytes()).unwrap();
+
+        write_to_local(
+            &format!("bookmarks/{}", user),
+            Some(&format!(
+                "Connection_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis()
+            )),
+            &String::from_utf8(cipherurl).unwrap(),
+        );
 
         Ok(())
     }
